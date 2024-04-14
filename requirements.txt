@@ -1,4 +1,5 @@
-fastapi[all]
+fastapi~=0.110.1
+uvicorn~=0.29.0
 neispy~=5.0.2
 aiohttp~=3.9.4
 requests~=2.31.0
