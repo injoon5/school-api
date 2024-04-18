@@ -3,6 +3,9 @@ from fastapi import FastAPI, Query
 import json
 import timetable_api
 from neispy import Neispy
+from neispy.domain.abc import Row
+from neispy.types.mealservicedietinfo import MealServiceDietInfoRowDict
+
 from aiohttp import ClientSession
 import re
 
@@ -33,7 +36,11 @@ def read_root():
 
 
 @app.get("/timetable")
-def read_timetable( grade: int, classno: int, week: int = Query(0, ge=0, le=1), schoolname: str = "목운중학교"):
+def read_timetable(
+        grade: int,
+        classno: int, week: int = Query(0, ge=0, le=1),
+        schoolname: str = "목운중학교",
+):
     # Assuming you have a TimeTable class and logic here to handle the timetable based on the week.
     timetable = timetable_api.TimeTable(schoolname, week_num=week)
 
@@ -61,7 +68,7 @@ async def read_lunch(startdate: int, enddate: int, schoolname: str = "목운중�
         for i in range(0, len(row.row)):
             row.row[i].DDISH_NM = re.sub(pattern=remove_pattern, repl='', string=row.row[i].DDISH_NM)
             row.row[i].DDISH_NM = row.row[i].DDISH_NM.replace(" <br/>", "\n")
-        print(row) # 줄바꿈으로 만든 뒤 출력
+ # 줄바꿈으로 만든 뒤 출력
         return row
 
 
