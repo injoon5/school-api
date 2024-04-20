@@ -45,9 +45,9 @@ def read_timetable(
     timetable = timetable_api.TimeTable(schoolname, week_num=week)
 
     # Example return statement
-    return {"day_time": json.dumps(timetable.day_time),
-            "timetable": json.dumps(timetable.timetable[grade][classno], default=lambda o: o.__dict__, sort_keys=False,
-                                    ensure_ascii=False), "update_date": json.dumps(timetable.update_date)}
+    return {"day_time": timetable.day_time,
+            "timetable": json.loads(json.dumps(timetable.timetable[grade][classno][1:][0:], default=lambda o: o.__dict__, sort_keys=False,
+                                    ensure_ascii=False)), "update_date": json.dumps(timetable.update_date)}
 
 
 @app.get("/lunch")
@@ -69,7 +69,7 @@ async def read_lunch(startdate: int, enddate: int, schoolname: str = "목운중�
             row.row[i].DDISH_NM = re.sub(pattern=remove_pattern, repl='', string=row.row[i].DDISH_NM)
             row.row[i].DDISH_NM = row.row[i].DDISH_NM.replace(" <br/>", "\n")
  # 줄바꿈으로 만든 뒤 출력
-        return row
+        return json.loads(json.dumps(row.row, default=lambda o: o.__dict__, sort_keys=False, ensure_ascii=False))
 
 
 @app.get("/schedule")
