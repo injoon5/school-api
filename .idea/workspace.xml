@@ -4,7 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2483d19b-307f-41af-8dd5-65c05b560ffc" name="Changes" comment="Vercel Test">
+    <list default="true" id="2483d19b-307f-41af-8dd5-65c05b560ffc" name="Changes" comment="JSON type responses">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
     </list>
@@ -97,7 +97,7 @@
       <option name="presentableId" value="Default" />
       <updated>1712942375238</updated>
       <workItem from="1712942380819" duration="701000" />
-      <workItem from="1712974588158" duration="13062000" />
+      <workItem from="1712974588158" duration="14176000" />
     </task>
     <task id="LOCAL-00001" summary="Initial API">
       <option name="closed" value="true" />
@@ -139,7 +139,15 @@
       <option name="project" value="LOCAL" />
       <updated>1713457374488</updated>
     </task>
-    <option name="localTasksCounter" value="6" />
+    <task id="LOCAL-00006" summary="JSON type responses">
+      <option name="closed" value="true" />
+      <created>1713572049053</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1713572049053</updated>
+    </task>
+    <option name="localTasksCounter" value="7" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -149,7 +157,8 @@
     <MESSAGE value="Initial API" />
     <MESSAGE value="Render deplyment" />
     <MESSAGE value="Vercel Test" />
-    <option name="LAST_COMMIT_MESSAGE" value="Vercel Test" />
+    <MESSAGE value="JSON type responses" />
+    <option name="LAST_COMMIT_MESSAGE" value="JSON type responses" />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/mogun_api$mogun_api.coverage" NAME="mogun_api Coverage Results" MODIFIED="1713059505730" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="" />

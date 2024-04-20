@@ -89,4 +89,4 @@ async def read_schedule(startdate: int, enddate: int, schoolname: str = "목운�
         row = scschedule.SchoolSchedule[1]
 
         print(row) # 줄바꿈으로 만든 뒤 출력
-        return row
+        return row.row
