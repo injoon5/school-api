@@ -30,7 +30,7 @@ app = FastAPI(
 # Enable CORS for the specified domain
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://timetable.injoon5.com"],
+    allow_origins=["https://timetable.injoon5.com", "http://localhost:3000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
