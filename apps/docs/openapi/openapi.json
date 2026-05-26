@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "TimeForSchool API",
-    "description": "TimeForSchool wraps the Korean **NEIS Open API** (school info, classes, meals, calendar) and **Comcigan** (weekly class timetables).\n\n### School identifier\nUse **either** `schoolname` **or** `schoolcode` (NEIS 7-digit code)—never both.\n\n### Dates\n`startdate` / `enddate` use **YYYYMMDD** (e.g. `20250526`).\n\n### Errors\nFailed requests return `{ ok: false, error: { code, message, details? } }` with an appropriate HTTP status.",
+    "description": "TimeForSchool wraps the Korean **NEIS Open API** (school info, classes, meals, calendar) and **Comcigan** (weekly class timetables).\n\n### School identifier\nUse **either** `schoolname` **or** `schoolcode` (NEIS 7-digit code)—never both. No endpoint defaults to a particular school; `GET /school` requires `schoolname`.\n\n### Dates\n`startdate` / `enddate` use **YYYYMMDD** (e.g. `20250526`).\n\n### Errors\nFailed requests return `{ ok: false, error: { code, message, details? } }` with an appropriate HTTP status.",
     "version": "0.0.1"
   },
   "tags": [
@@ -78,9 +78,9 @@
             "required": true,
             "schema": {
               "minLength": 1,
-              "description": "Korean school name as registered in NEIS (e.g. 서울 양정고등학교).",
+              "description": "Korean school name as registered in NEIS (e.g. 목운중학교). Required on GET /school.",
               "examples": [
-                "양정고등학교"
+                "목운중학교"
               ],
               "type": "string"
             }
@@ -145,9 +145,9 @@
             "required": false,
             "schema": {
               "minLength": 1,
-              "description": "Korean school name as registered in NEIS (e.g. 서울 양정고등학교).",
+              "description": "Korean school name as registered in NEIS (e.g. 목운중학교). Required on GET /school.",
               "examples": [
-                "양정고등학교"
+                "목운중학교"
               ],
               "type": "string"
             }
@@ -254,9 +254,9 @@
             "required": false,
             "schema": {
               "minLength": 1,
-              "description": "Korean school name as registered in NEIS (e.g. 서울 양정고등학교).",
+              "description": "Korean school name as registered in NEIS (e.g. 목운중학교). Required on GET /school.",
               "examples": [
-                "양정고등학교"
+                "목운중학교"
               ],
               "type": "string"
             }
@@ -427,9 +427,9 @@
             "required": false,
             "schema": {
               "minLength": 1,
-              "description": "Korean school name as registered in NEIS (e.g. 서울 양정고등학교).",
+              "description": "Korean school name as registered in NEIS (e.g. 목운중학교). Required on GET /school.",
               "examples": [
-                "양정고등학교"
+                "목운중학교"
               ],
               "type": "string"
             }
@@ -533,9 +533,9 @@
             "required": false,
             "schema": {
               "minLength": 1,
-              "description": "Korean school name as registered in NEIS (e.g. 서울 양정고등학교).",
+              "description": "Korean school name as registered in NEIS (e.g. 목운중학교). Required on GET /school.",
               "examples": [
-                "양정고등학교"
+                "목운중학교"
               ],
               "type": "string"
             }
@@ -719,7 +719,7 @@
               "ATPT_OFCDC_SC_CODE": "B10",
               "ATPT_OFCDC_SC_NM": "서울특별시교육청",
               "SD_SCHUL_CODE": "7010208",
-              "SCHUL_NM": "양정고등학교",
+              "SCHUL_NM": "목운중학교",
               "ENG_SCHUL_NM": "Yangchung High School",
               "SCHUL_KND_SC_NM": "고등학교",
               "LCTN_SC_NM": "서울특별시",
@@ -797,7 +797,7 @@
             "SCHUL_NM": {
               "description": "School name",
               "examples": [
-                "양정고등학교"
+                "목운중학교"
               ],
               "type": "string"
             },
@@ -1130,7 +1130,7 @@
             {
               "ATPT_OFCDC_SC_CODE": "B10",
               "SD_SCHUL_CODE": "7010208",
-              "SCHUL_NM": "양정고등학교",
+              "SCHUL_NM": "목운중학교",
               "MMEAL_SC_CODE": "2",
               "MMEAL_SC_NM": "중식",
               "MLSV_YMD": "20250526",
@@ -1191,7 +1191,7 @@
             "SCHUL_NM": {
               "description": "School name",
               "examples": [
-                "양정고등학교"
+                "목운중학교"
               ],
               "type": "string"
             },
@@ -1283,7 +1283,7 @@
             {
               "ATPT_OFCDC_SC_CODE": "B10",
               "SD_SCHUL_CODE": "7010208",
-              "SCHUL_NM": "양정고등학교",
+              "SCHUL_NM": "목운중학교",
               "AY": "2025",
               "AA_YMD": "20250505",
               "EVENT_NM": "어린이날",
@@ -1341,7 +1341,7 @@
             "SCHUL_NM": {
               "description": "School name",
               "examples": [
-                "양정고등학교"
+                "목운중학교"
               ],
               "type": "string"
             },

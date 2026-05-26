@@ -1,4 +1,6 @@
 {
   "title": "Client",
+  "description": "@timeforschool/client for Node and the browser",
+  "root": true,
   "pages": ["index", "neis", "timetable", "errors"]
 }
