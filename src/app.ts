@@ -30,7 +30,7 @@ import {
   requireSchoolParam,
   resolveSchool,
 } from "./services/school.js";
-import { normalizeTimetablePeriod, omitNullsFromRows } from "./utils/json.js";
+import { omitNullsFromRows } from "./utils/json.js";
 
 const REMOVE_PAREN_PATTERN = /\([^)]*\)/g;
 
@@ -243,7 +243,7 @@ export const app = new Elysia({ name: "timeforschool" })
 
         return {
           day_time: timetable.dayTime,
-          timetable: weekDays.map((day) => day.map(normalizeTimetablePeriod)),
+          timetable: weekDays,
           update_date: timetable.updateDate,
         } as Static<typeof TimetableResponseSchema>;
       }),
@@ -259,7 +259,7 @@ export const app = new Elysia({ name: "timeforschool" })
         tags: ["Timetable"],
         summary: "Weekly class timetable",
         description:
-          "Fetches the class schedule from Comcigan. Provide schoolname, or schoolcode alone (name is resolved via NEIS). week: 0 = this week, 1 = next week.",
+          "Fetches the class schedule from Comcigan. Provide schoolname, or schoolcode alone (name is resolved via NEIS). week: 0 = this week, 1 = next week. Most periods have `replaced: false` and `original: null`; when a period was substituted, `replaced` is true and `original` is the class before the change.",
       },
       response: {
         200: TimetableResponseSchema,

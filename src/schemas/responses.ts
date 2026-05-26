@@ -174,16 +174,33 @@ export const ScheduleListSchema = t.Array(ScheduleRowSchema, {
 
 export const TimetableLectureSchema = t.Object({
   period: t.Number({ examples: [1] }),
-  subject: t.String({ examples: ["수학"] }),
+  subject: t.String({ examples: ["영어"] }),
   teacher: t.String({ examples: ["김교사"] }),
 });
+
+/** Pre-substitution class; null when unchanged, object when replaced (may be partial). */
+export const TimetableOriginalSchema = t.Union([
+  TimetableLectureSchema,
+  t.Null(),
+  t.Object(
+    {
+      period: t.Optional(t.Number()),
+      subject: t.Optional(t.String()),
+      teacher: t.Optional(t.String()),
+    },
+    { additionalProperties: true },
+  ),
+]);
 
 export const TimetablePeriodSchema = t.Object({
   period: t.Number({ examples: [1] }),
   subject: t.String({ examples: ["수학"] }),
   teacher: t.String({ examples: ["김교사"] }),
-  replaced: t.Boolean({ examples: [false] }),
-  original: t.Optional(TimetableLectureSchema),
+  replaced: t.Boolean({
+    description: "true only when this period was substituted; most periods are false.",
+    examples: [false],
+  }),
+  original: TimetableOriginalSchema,
 });
 
 export const TimetableResponseSchema = t.Object({
@@ -201,6 +218,25 @@ export const TimetableResponseSchema = t.Object({
             subject: "수학",
             teacher: "김교사",
             replaced: false,
+            original: null,
+          },
+          {
+            period: 2,
+            subject: "체육",
+            teacher: "이교사",
+            replaced: false,
+            original: null,
+          },
+          {
+            period: 3,
+            subject: "자율",
+            teacher: "",
+            replaced: true,
+            original: {
+              period: 3,
+              subject: "영어",
+              teacher: "박교사",
+            },
           },
         ],
       ],
