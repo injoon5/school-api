@@ -116,4 +116,4 @@ npx vercel env add NEIS_API_KEY
 npx vercel deploy --prod
 ```
 
-`vercel.json` sets region `icn1` and `maxDuration: 30` for upstream API calls.
+`vercel.json` sets `maxDuration: 30` for upstream API calls.
