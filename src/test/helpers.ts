@@ -38,18 +38,40 @@ export async function fetchProduction(
   return { status: response.status, body };
 }
 
-export function isErrorBody(
+export function isErrorBody(body: unknown): body is {
+  ok: false;
+  error: { code: string; message: string };
+} {
+  return (
+    typeof body === "object" &&
+    body !== null &&
+    (body as { ok?: boolean }).ok === false &&
+    typeof (body as { error?: { code?: string } }).error?.code === "string"
+  );
+}
+
+/** Legacy api.timefor.school (Python) error shape */
+export function isLegacyErrorBody(
   body: unknown,
 ): body is { error: true; message: string; data: null } {
   return (
     typeof body === "object" &&
     body !== null &&
-    "error" in body &&
-    (body as { error: unknown }).error === true
+    (body as { error?: boolean }).error === true &&
+    !("ok" in (body as object))
   );
 }
 
-/** Stable JSON compare (key order + 1523 vs 1523.0) */
+export function isAnyErrorBody(body: unknown): boolean {
+  return isErrorBody(body) || isLegacyErrorBody(body);
+}
+
+export function errorMessage(body: unknown): string | undefined {
+  if (isErrorBody(body)) return body.error.message;
+  if (isLegacyErrorBody(body)) return body.message;
+  return undefined;
+}
+
 export function normalizeJson(value: unknown): unknown {
   if (value === null || value === undefined) return value;
   if (typeof value === "number" && Number.isFinite(value)) {

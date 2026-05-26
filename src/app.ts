@@ -1,17 +1,45 @@
 import { cors } from "@elysiajs/cors";
-import { Elysia } from "elysia";
+import { swagger } from "@elysiajs/swagger";
+import { Elysia, t } from "elysia";
 import { CORS_ORIGINS, NEIS_API_KEY } from "./config.js";
+import { ApiError, ErrorCode } from "./errors/api-error.js";
 import { Neispy } from "./neispy/client.js";
+import {
+  ApiErrorSchema,
+  ClassNo,
+  DateYmd,
+  Grade,
+  SchoolCode,
+  SchoolName,
+  Week,
+} from "./schemas/common.js";
+import {
+  assertSingleSchoolParam,
+  lookupSchoolNameByCode,
+  requireSchoolParam,
+  resolveSchool,
+} from "./services/school.js";
 import { fetchTimeTable } from "./timetable/index.js";
 
 const REMOVE_PAREN_PATTERN = /\([^)]*\)/g;
 
-function errorResponse(message: string) {
-  return { error: true, message, data: null };
-}
+const API_DESCRIPTION = `
+SchoolKit wraps the Korean **NEIS Open API** (school info, classes, meals, calendar) and **Comcigan** (weekly class timetables).
 
-function bothSchoolParams(schoolname?: string, schoolcode?: string) {
-  return Boolean(schoolname && schoolcode);
+### School identifier
+Use **either** \`schoolname\` **or** \`schoolcode\` (NEIS 7-digit code)—never both.
+
+### Dates
+\`startdate\` / \`enddate\` use **YYYYMMDD** (e.g. \`20250526\`).
+
+### Errors
+Failed requests return \`{ ok: false, error: { code, message, details? } }\` with an appropriate HTTP status.
+`.trim();
+
+function handleRoute<T>(fn: () => Promise<T>): Promise<T> {
+  return fn().catch((error) => {
+    throw ApiError.fromUnknown(error);
+  });
 }
 
 export const app = new Elysia({ name: "schoolkit" })
@@ -21,177 +49,315 @@ export const app = new Elysia({ name: "schoolkit" })
       credentials: true,
     }),
   )
-  .get("/", () => ({ Hello: "World" }))
-  .get("/school", async ({ query }) => {
-    const schoolname = query.schoolname ?? "목운중학교";
-    try {
-      const neis = new Neispy({ key: NEIS_API_KEY });
-      const rows = await neis.schoolInfo({ SCHUL_NM: schoolname });
-      return rows;
-    } catch (e) {
-      const message = e instanceof Error ? e.message : String(e);
-      return errorResponse(message);
-    }
-  })
-  .get("/classes", async ({ query }) => {
-    const { schoolname, schoolcode, grade } = query;
-
-    if (!grade) {
-      return errorResponse("grade is required");
-    }
-
-    if (bothSchoolParams(schoolname, schoolcode)) {
-      return errorResponse("Cannot provide both schoolname and schoolcode");
-    }
-
-    try {
-      const neis = new Neispy({ key: NEIS_API_KEY });
-      const rows = schoolname
-        ? await neis.schoolInfo({ SCHUL_NM: schoolname })
-        : await neis.schoolInfo({ SD_SCHUL_CODE: schoolcode });
-
-      const school = rows[0];
-      if (!school) {
-        return errorResponse("School not found");
-      }
-
-      const classRows = await neis.classInfo({
-        ATPT_OFCDC_SC_CODE: school.ATPT_OFCDC_SC_CODE,
-        SD_SCHUL_CODE: school.SD_SCHUL_CODE,
-      });
-
-      const classNames = [...new Set(classRows.map((row) => row.CLASS_NM))].sort(
-        (a, b) => {
-          const ai = Number.parseInt(a, 10);
-          const bi = Number.parseInt(b, 10);
-          if (Number.isNaN(ai) || Number.isNaN(bi)) return 0;
-          return ai - bi;
+  .use(
+    swagger({
+      path: "/docs",
+      documentation: {
+        info: {
+          title: "SchoolKit API",
+          version: "0.0.1",
+          description: API_DESCRIPTION,
+        },
+        tags: [
+          { name: "Meta", description: "Service metadata" },
+          { name: "School", description: "NEIS school profile" },
+          { name: "Classes", description: "Class numbers by grade" },
+          { name: "Timetable", description: "Weekly timetable (Comcigan)" },
+          { name: "Lunch", description: "Meal menus (NEIS)" },
+          { name: "Schedule", description: "School calendar (NEIS)" },
+        ],
+      },
+    }),
+  )
+  .onError(({ error, set, code }) => {
+    if (code === "VALIDATION") {
+      const apiError = ApiError.validation(
+        "One or more query parameters are invalid.",
+        {
+          summary:
+            error instanceof Error
+              ? error.message
+              : "See /docs for required formats.",
         },
       );
-
-      void grade;
-      return classNames;
-    } catch (e) {
-      const message = e instanceof Error ? e.message : String(e);
-      return errorResponse(message);
+      set.status = apiError.status;
+      return apiError.toJSON();
     }
+
+    const apiError =
+      error instanceof ApiError ? error : ApiError.fromUnknown(error);
+
+    set.status = apiError.status;
+    return apiError.toJSON();
   })
-  .get("/timetable", async ({ query }) => {
-    const schoolname = query.schoolname;
-    const schoolcodeParam = query.schoolcode;
-    const grade = Number(query.grade);
-    const classno = Number(query.classno);
-    const week = Math.min(1, Math.max(0, Number(query.week ?? "0")));
+  .get(
+    "/",
+    () => ({
+      name: "SchoolKit",
+      version: "0.0.1",
+      docs: "/docs",
+      openapi: "/docs/json",
+    }),
+    {
+      detail: {
+        tags: ["Meta"],
+        summary: "API info",
+        description: "Service name, version, and links to interactive documentation.",
+      },
+    },
+  )
+  .get(
+    "/school",
+    ({ query }) =>
+      handleRoute(async () => {
+        const schoolname = query.schoolname ?? "목운중학교";
+        const client = new Neispy({ key: NEIS_API_KEY });
+        return client.schoolInfo({ SCHUL_NM: schoolname });
+      }),
+    {
+      query: t.Object({
+        schoolname: t.Optional(SchoolName),
+      }),
+      detail: {
+        tags: ["School"],
+        summary: "Search schools by name",
+        description:
+          "Returns all NEIS school records matching the name. Defaults to 목운중학교 when schoolname is omitted.",
+      },
+      response: {
+        200: t.Any(),
+        404: ApiErrorSchema,
+        502: ApiErrorSchema,
+      },
+    },
+  )
+  .get(
+    "/classes",
+    ({ query }) =>
+      handleRoute(async () => {
+        assertSingleSchoolParam(query);
+        requireSchoolParam(query);
 
-    if (bothSchoolParams(schoolname, schoolcodeParam)) {
-      return errorResponse("Cannot provide both schoolname and schoolcode");
-    }
+        const school = await resolveSchool(query);
+        const client = new Neispy({ key: NEIS_API_KEY });
+        const classRows = await client.classInfo({
+          ATPT_OFCDC_SC_CODE: school.ATPT_OFCDC_SC_CODE,
+          SD_SCHUL_CODE: school.SD_SCHUL_CODE,
+          GRADE: String(query.grade),
+        });
 
-    const schoolcode = schoolcodeParam ?? "7081492";
+        return [...new Set(classRows.map((row) => row.CLASS_NM))].sort(
+          (a, b) => {
+            const ai = Number.parseInt(a, 10);
+            const bi = Number.parseInt(b, 10);
+            if (Number.isNaN(ai) || Number.isNaN(bi)) return 0;
+            return ai - bi;
+          },
+        );
+      }),
+    {
+      query: t.Object({
+        schoolname: t.Optional(SchoolName),
+        schoolcode: t.Optional(SchoolCode),
+        grade: Grade,
+      }),
+      detail: {
+        tags: ["Classes"],
+        summary: "List class numbers for a grade",
+        description:
+          "Returns sorted class names (반) for the given school and grade using NEIS classInfo.",
+      },
+      response: {
+        200: t.Array(t.String()),
+        400: ApiErrorSchema,
+        404: ApiErrorSchema,
+        502: ApiErrorSchema,
+      },
+    },
+  )
+  .get(
+    "/timetable",
+    ({ query }) =>
+      handleRoute(async () => {
+        const schoolname =
+          typeof query.schoolname === "string" ? query.schoolname : undefined;
+        const schoolcode =
+          typeof query.schoolcode === "string" ? query.schoolcode : undefined;
+        assertSingleSchoolParam({ schoolname, schoolcode });
 
-    try {
-      let resolvedSchoolName = schoolname;
+        const grade = Number(query.grade);
+        const classno = Number(query.classno);
+        const week = Number(query.week ?? 0);
 
-      if (!resolvedSchoolName) {
-        const neis = new Neispy({ key: NEIS_API_KEY });
-        const rows = await neis.schoolInfo({ SD_SCHUL_CODE: schoolcode });
-        resolvedSchoolName = rows[0]?.SCHUL_NM;
-        if (!resolvedSchoolName) {
-          return errorResponse("School not found");
+        if (!Number.isInteger(grade) || grade < 1) {
+          throw ApiError.validation("grade must be a positive integer.", {
+            grade: query.grade,
+          });
         }
-      }
+        if (!Number.isInteger(classno) || classno < 1) {
+          throw ApiError.validation("classno must be a positive integer.", {
+            classno: query.classno,
+          });
+        }
 
-      const timetable = await fetchTimeTable({
-        schoolName: resolvedSchoolName,
-        schoolCode: schoolname ? undefined : Number(schoolcode),
-        weekNum: week,
-      });
+        let schoolName = schoolname;
+        const schoolCodeParam = schoolcode;
 
-      const slice = timetable.timetable[grade]?.[classno]?.slice(1) ?? [];
+        if (!schoolName) {
+          if (!schoolCodeParam) {
+            throw ApiError.missingSchoolIdentifier();
+          }
+          schoolName = await lookupSchoolNameByCode(schoolCodeParam);
+        }
 
-      return {
-        day_time: timetable.dayTime,
-        timetable: slice,
-        update_date: JSON.stringify(timetable.updateDate),
-      };
-    } catch (e) {
-      const message = e instanceof Error ? e.message : String(e);
-      return errorResponse(message);
-    }
-  })
-  .get("/lunch", async ({ query }) => {
-    const { schoolname, schoolcode, startdate, enddate } = query;
+        const timetable = await fetchTimeTable({
+          schoolName,
+          schoolCode: schoolCodeParam ? Number(schoolCodeParam) : undefined,
+          weekNum: week,
+        });
 
-    if (bothSchoolParams(schoolname, schoolcode)) {
-      return errorResponse("Cannot provide both schoolname and schoolcode");
-    }
+        const weekDays = timetable.timetable[grade]?.[classno]?.slice(1);
+        if (!weekDays?.length) {
+          throw new ApiError(
+            ErrorCode.TIMETABLE_INVALID_GRADE_CLASS,
+            404,
+            "No timetable found for this grade and class.",
+            { grade, classno, schoolname: schoolName },
+          );
+        }
 
-    if (!startdate || !enddate) {
-      return errorResponse("startdate and enddate are required");
-    }
+        return {
+          day_time: timetable.dayTime,
+          timetable: weekDays,
+          update_date: timetable.updateDate,
+        };
+      }),
+    {
+      query: t.Object({
+        grade: Grade,
+        classno: ClassNo,
+        week: Week,
+        schoolname: t.Optional(SchoolName),
+        schoolcode: t.Optional(SchoolCode),
+      }),
+      detail: {
+        tags: ["Timetable"],
+        summary: "Weekly class timetable",
+        description:
+          "Fetches the class schedule from Comcigan. Provide schoolname, or schoolcode alone (name is resolved via NEIS). week: 0 = this week, 1 = next week.",
+      },
+      response: {
+        200: t.Object({
+          day_time: t.Array(t.String()),
+          timetable: t.Array(t.Array(t.Any())),
+          update_date: t.String(),
+        }),
+        400: ApiErrorSchema,
+        404: ApiErrorSchema,
+        409: ApiErrorSchema,
+        502: ApiErrorSchema,
+      },
+    },
+  )
+  .get(
+    "/lunch",
+    ({ query }) =>
+      handleRoute(async () => {
+        assertSingleSchoolParam(query);
+        requireSchoolParam(query);
 
-    try {
-      const neis = new Neispy({ key: NEIS_API_KEY });
-      const schools = schoolname
-        ? await neis.schoolInfo({ SCHUL_NM: schoolname })
-        : await neis.schoolInfo({ SD_SCHUL_CODE: schoolcode });
+        const school = await resolveSchool(query);
+        const client = new Neispy({ key: NEIS_API_KEY });
+        const meals = await client.mealServiceDietInfo({
+          ATPT_OFCDC_SC_CODE: school.ATPT_OFCDC_SC_CODE,
+          SD_SCHUL_CODE: school.SD_SCHUL_CODE,
+          MLSV_FROM_YMD: query.startdate,
+          MLSV_TO_YMD: query.enddate,
+        });
 
-      const school = schools[0];
-      if (!school) {
-        return errorResponse("School not found");
-      }
+        if (meals.length === 0) {
+          throw ApiError.neisDataNotFound({
+            endpoint: "mealServiceDietInfo",
+            startdate: query.startdate,
+            enddate: query.enddate,
+            schoolname: school.SCHUL_NM,
+          });
+        }
 
-      const meals = await neis.mealServiceDietInfo({
-        ATPT_OFCDC_SC_CODE: school.ATPT_OFCDC_SC_CODE,
-        SD_SCHUL_CODE: school.SD_SCHUL_CODE,
-        MLSV_FROM_YMD: startdate,
-        MLSV_TO_YMD: enddate,
-      });
+        return meals.map((item) => ({
+          ...item,
+          DDISH_NM: item.DDISH_NM.replace(REMOVE_PAREN_PATTERN, "")
+            .replaceAll(" <br/>", "\n")
+            .replaceAll("<br/>", "\n"),
+        }));
+      }),
+    {
+      query: t.Object({
+        schoolname: t.Optional(SchoolName),
+        schoolcode: t.Optional(SchoolCode),
+        startdate: DateYmd,
+        enddate: DateYmd,
+      }),
+      detail: {
+        tags: ["Lunch"],
+        summary: "Meal menus for a date range",
+        description:
+          "Returns NEIS mealServiceDietInfo rows. Parentheses are stripped from dish names; HTML line breaks become newlines.",
+      },
+      response: {
+        200: t.Any(),
+        400: ApiErrorSchema,
+        404: ApiErrorSchema,
+        502: ApiErrorSchema,
+      },
+    },
+  )
+  .get(
+    "/schedule",
+    ({ query }) =>
+      handleRoute(async () => {
+        assertSingleSchoolParam(query);
+        requireSchoolParam(query);
 
-      return meals.map((item) => ({
-        ...item,
-        DDISH_NM: item.DDISH_NM
-          .replace(REMOVE_PAREN_PATTERN, "")
-          .replaceAll(" <br/>", "\n")
-          .replaceAll("<br/>", "\n"),
-      }));
-    } catch (e) {
-      const message = e instanceof Error ? e.message : String(e);
-      return errorResponse(message);
-    }
-  })
-  .get("/schedule", async ({ query }) => {
-    const { schoolname, schoolcode, startdate, enddate } = query;
+        const school = await resolveSchool(query);
+        const client = new Neispy({ key: NEIS_API_KEY });
+        const rows = await client.schoolSchedule({
+          ATPT_OFCDC_SC_CODE: school.ATPT_OFCDC_SC_CODE,
+          SD_SCHUL_CODE: school.SD_SCHUL_CODE,
+          AA_FROM_YMD: query.startdate,
+          AA_TO_YMD: query.enddate,
+        });
 
-    if (bothSchoolParams(schoolname, schoolcode)) {
-      return errorResponse("Cannot provide both schoolname and schoolcode");
-    }
+        if (rows.length === 0) {
+          throw ApiError.neisDataNotFound({
+            endpoint: "SchoolSchedule",
+            startdate: query.startdate,
+            enddate: query.enddate,
+            schoolname: school.SCHUL_NM,
+          });
+        }
 
-    if (!startdate || !enddate) {
-      return errorResponse("startdate and enddate are required");
-    }
-
-    try {
-      const neis = new Neispy({ key: NEIS_API_KEY });
-      const schools = schoolname
-        ? await neis.schoolInfo({ SCHUL_NM: schoolname })
-        : await neis.schoolInfo({ SD_SCHUL_CODE: schoolcode });
-
-      const school = schools[0];
-      if (!school) {
-        return errorResponse("School not found");
-      }
-
-      return neis.schoolSchedule({
-        ATPT_OFCDC_SC_CODE: school.ATPT_OFCDC_SC_CODE,
-        SD_SCHUL_CODE: school.SD_SCHUL_CODE,
-        AA_FROM_YMD: startdate,
-        AA_TO_YMD: enddate,
-      });
-    } catch (e) {
-      const message = e instanceof Error ? e.message : String(e);
-      return errorResponse(message);
-    }
-  });
+        return rows;
+      }),
+    {
+      query: t.Object({
+        schoolname: t.Optional(SchoolName),
+        schoolcode: t.Optional(SchoolCode),
+        startdate: DateYmd,
+        enddate: DateYmd,
+      }),
+      detail: {
+        tags: ["Schedule"],
+        summary: "School calendar events",
+        description: "Returns NEIS SchoolSchedule rows between startdate and enddate (inclusive).",
+      },
+      response: {
+        200: t.Any(),
+        400: ApiErrorSchema,
+        404: ApiErrorSchema,
+        502: ApiErrorSchema,
+      },
+    },
+  );
 
 export default app;

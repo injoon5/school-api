@@ -4,6 +4,14 @@ TypeScript API for NEIS school data (school info, classes, lunch, schedule) and 
 
 Built with [Elysia](https://elysiajs.com).
 
+## Documentation
+
+| Resource | URL |
+|----------|-----|
+| Interactive docs (Swagger UI) | `/docs` |
+| OpenAPI JSON | `/docs/json` |
+| API info | `GET /` |
+
 ## Setup
 
 ```bash
@@ -23,39 +31,68 @@ Copy `.env.example` to `.env.local` for local overrides.
 npm run dev
 ```
 
-Or with Vercel’s dev server (matches production routing):
+Open http://localhost:8000/docs for the interactive API reference.
 
 ```bash
 npx vercel dev
 ```
 
-## Scripts
+## Error responses
 
-- `npm run build` — compile to `dist/` (local / Render)
-- `npm start` — run compiled server
-- `npm test` — smoke tests + comparison with api.timefor.school
+Errors use a consistent JSON shape and HTTP status code:
+
+```json
+{
+  "ok": false,
+  "error": {
+    "code": "SCHOOL_NOT_FOUND",
+    "message": "No school matched the given identifier.",
+    "details": { "schoolname": "..." }
+  }
+}
+```
+
+| Code | HTTP | Meaning |
+|------|------|---------|
+| `VALIDATION_ERROR` | 400 | Invalid or missing query parameters |
+| `CONFLICTING_SCHOOL_PARAMS` | 400 | Both `schoolname` and `schoolcode` sent |
+| `MISSING_SCHOOL_IDENTIFIER` | 400 | Neither `schoolname` nor `schoolcode` sent |
+| `SCHOOL_NOT_FOUND` | 404 | NEIS has no matching school |
+| `NEIS_DATA_NOT_FOUND` | 404 | NEIS returned no rows for the date range |
+| `TIMETABLE_INVALID_GRADE_CLASS` | 404 | No Comcigan data for grade/class |
+| `TIMETABLE_AMBIGUOUS_SCHOOL` | 409 | Multiple Comcigan matches—use `schoolcode` |
+| `NEIS_UPSTREAM_ERROR` | 502 | NEIS API failure |
+| `TIMETABLE_UPSTREAM_ERROR` | 502 | Comcigan fetch/parse failure |
+| `INTERNAL_ERROR` | 500 | Unexpected error |
 
 ## Endpoints
 
 | Route | Description |
 |-------|-------------|
-| `GET /` | Health check |
+| `GET /` | Service metadata and doc links |
 | `GET /school` | School info (`schoolname`) |
 | `GET /classes` | Class numbers (`grade`, `schoolname` or `schoolcode`) |
 | `GET /timetable` | Weekly timetable (`grade`, `classno`, `week`, `schoolname` or `schoolcode`) |
 | `GET /lunch` | Meal menus (`startdate`, `enddate`, `schoolname` or `schoolcode`) |
 | `GET /schedule` | School calendar (`startdate`, `enddate`, `schoolname` or `schoolcode`) |
 
+**School identifier:** pass exactly one of `schoolname` or `schoolcode` (7-digit NEIS code).
+
+**Dates:** `YYYYMMDD` (e.g. `20250526`).
+
+## Scripts
+
+- `npm run build` — compile to `dist/`
+- `npm start` — run compiled server
+- `npm test` — smoke tests + comparison with api.timefor.school
+
 ## Deploy to Vercel
 
-Vercel detects Elysia automatically when `src/app.ts` default-exports the app ([docs](https://vercel.com/docs/frameworks/backend/elysia)).
+Vercel detects Elysia when `src/app.ts` default-exports the app.
 
-1. Import this repo in [Vercel](https://vercel.com/new).
-2. **Environment variables** (Production):
-   - `NEIS_API_KEY` — your NEIS key (recommended for production traffic).
-3. Deploy. No custom build command required; framework preset is **Other** / auto-detected Elysia.
-
-CLI:
+1. Import the repo in [Vercel](https://vercel.com/new).
+2. Set `NEIS_API_KEY` for Production.
+3. Deploy.
 
 ```bash
 npx vercel link
@@ -63,8 +100,4 @@ npx vercel env add NEIS_API_KEY
 npx vercel deploy --prod
 ```
 
-`vercel.json` sets region `icn1` (Seoul) and `maxDuration: 30` for timetable/NEIS upstream calls.
-
-### Custom domain
-
-Point `api.timefor.school` (or your domain) to the Vercel project under **Settings → Domains**.
+`vercel.json` sets region `icn1` and `maxDuration: 30` for upstream API calls.

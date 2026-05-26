@@ -1,13 +1,11 @@
 import { app } from "../app.js";
-import { assert, isErrorBody, requestJson } from "./helpers.js";
+import { assert, isAnyErrorBody, isErrorBody, requestJson } from "./helpers.js";
 
 async function main() {
   const root = await requestJson(app, "/");
   assert(root.status === 200, `GET / expected 200, got ${root.status}`);
-  assert(
-    JSON.stringify(root.body) === JSON.stringify({ Hello: "World" }),
-    "GET / body mismatch",
-  );
+  const meta = root.body as { name?: string; docs?: string };
+  assert(meta.name === "SchoolKit" && meta.docs === "/docs", "GET / body mismatch");
   console.log("✓ GET /");
 
   const school = await requestJson(app, "/school?schoolname=목운중학교");
@@ -36,11 +34,10 @@ async function main() {
   );
   assert(timetable.status === 200, `GET /timetable expected 200`);
   const tt = timetable.body as {
-    error?: boolean;
     day_time?: string[];
     timetable?: unknown[];
   };
-  assert(!tt.error, `/timetable error: ${JSON.stringify(tt)}`);
+  assert(!isErrorBody(timetable.body), `/timetable error: ${JSON.stringify(timetable.body)}`);
   assert(Array.isArray(tt.day_time) && tt.day_time.length > 0, "day_time missing");
   assert(Array.isArray(tt.timetable) && tt.timetable.length > 0, "timetable empty");
   console.log("✓ GET /timetable");
@@ -50,7 +47,7 @@ async function main() {
     "/schedule?startdate=20250301&enddate=20250331&schoolname=목운중학교",
   );
   assert(schedule.status === 200, `GET /schedule expected 200`);
-  if (isErrorBody(schedule.body)) {
+  if (isAnyErrorBody(schedule.body)) {
     console.log(
       "⚠ GET /schedule returned error (no NEIS data for range):",
       schedule.body,
@@ -64,10 +61,11 @@ async function main() {
     app,
     "/lunch?startdate=20250526&enddate=20250526&schoolname=목운중학교&schoolcode=7081492",
   );
+  assert(conflict.status === 400, "expected 400 for conflict");
   assert(isErrorBody(conflict.body), "expected conflict error");
   assert(
-    conflict.body.message.includes("both schoolname and schoolcode"),
-    "unexpected conflict message",
+    conflict.body.error.code === "CONFLICTING_SCHOOL_PARAMS",
+    "unexpected conflict code",
   );
   console.log("✓ validation: schoolname + schoolcode");
 

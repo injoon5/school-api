@@ -90,15 +90,19 @@ async function run() {
   assert(daysWithLessons >= 3, "expected at least 3 school days with lessons");
 
   console.log("✓ GET /timetable");
-  console.log(`  update: ${JSON.parse(tt.update_date)}`);
+  console.log(`  update: ${tt.update_date}`);
   console.log(`  Tue P1: ${tuesday[0].subject} (${tuesday[0].teacher})`);
 
   const conflict = await requestJson(
     app,
     `/timetable?grade=${GRADE}&classno=${CLASS_NO}&week=0&${schoolQuery()}&schoolcode=7010208`,
   );
-  assert(conflict.status === 200, `conflict check status ${conflict.status}`);
-  assert(isErrorBody(conflict.body), "expected schoolname+schoolcode conflict");
+  assert(conflict.status === 400, `conflict check status ${conflict.status}`);
+  assert(
+    isErrorBody(conflict.body) &&
+      conflict.body.error.code === "CONFLICTING_SCHOOL_PARAMS",
+    "expected schoolname+schoolcode conflict",
+  );
   console.log("✓ timetable rejects schoolname + schoolcode");
 
   console.log("\n양정고 1-3 tests passed.");

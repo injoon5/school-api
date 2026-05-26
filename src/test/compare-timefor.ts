@@ -1,11 +1,14 @@
 /**
- * Compare local Elysia API with https://api.timefor.school (legacy Python deployment).
+ * Compare local API with https://api.timefor.school (legacy Python deployment).
+ * Success payloads should match; error shapes intentionally differ (local uses structured errors).
  */
 import { app } from "../app.js";
 import {
   assert,
+  errorMessage,
   fetchProduction,
   isErrorBody,
+  isLegacyErrorBody,
   jsonEqual,
   PRODUCTION_API,
   requestJson,
@@ -57,14 +60,13 @@ async function main() {
     requestJson(app, schedulePath),
     fetchProduction(schedulePath),
   ]);
-  if (isErrorBody(prodSched.body) && isErrorBody(localSched.body)) {
-    console.log(
-      `◦ GET /schedule: both return error (no NEIS data) — prod: ${prodSched.body.message}`,
-    );
+  const prodSchedErr = errorMessage(prodSched.body);
+  const localSchedErr = errorMessage(localSched.body);
+  if (prodSchedErr && localSchedErr) {
+    console.log(`◦ GET /schedule: both error — prod: ${prodSchedErr}`);
   } else if (jsonEqual(localSched.body, prodSched.body)) {
     console.log("✓ GET /schedule: matches production");
   } else {
-    console.log("✗ GET /schedule: differs");
     throw new Error("schedule mismatch");
   }
 
@@ -74,10 +76,10 @@ async function main() {
     fetchProduction(ttPath),
   ]);
 
-  if (isErrorBody(prodTt.body)) {
+  if (isLegacyErrorBody(prodTt.body)) {
     assert(!isErrorBody(localTt.body), "local timetable should work with schoolname");
     console.log(
-      `◦ GET /timetable?schoolname=…: production error (Python default schoolcode bug)`,
+      "◦ GET /timetable?schoolname=…: production error (Python default schoolcode bug)",
     );
     console.log(`    prod: ${prodTt.body.message}`);
     console.log(
@@ -94,20 +96,20 @@ async function main() {
     requestJson(app, conflictPath),
     fetchProduction(conflictPath),
   ]);
-  assert(isErrorBody(localConflict.body), "local should reject both params");
-  assert(isErrorBody(prodConflict.body), "production should reject both params");
   assert(
-    localConflict.body.message === prodConflict.body.message,
-    "conflict message should match",
+    isErrorBody(localConflict.body) &&
+      localConflict.body.error.code === "CONFLICTING_SCHOOL_PARAMS",
+    "local should reject both params",
   );
-  console.log("✓ timetable conflict message matches production");
+  assert(isLegacyErrorBody(prodConflict.body), "production should reject both params");
+  console.log("✓ timetable conflict: both reject schoolname + schoolcode");
 
   const prodCodeOnly = await fetchProduction(
     `/timetable?grade=${GRADE}&classno=${CLASS_NO}&week=0&schoolcode=${SCHOOL_CODE}`,
   );
-  if (isErrorBody(prodCodeOnly.body)) {
+  if (isLegacyErrorBody(prodCodeOnly.body)) {
     console.log(
-      `◦ GET /timetable?schoolcode only: production still broken — ${prodCodeOnly.body.message}`,
+      `◦ GET /timetable?schoolcode only: production broken — ${prodCodeOnly.body.message}`,
     );
   }
 
