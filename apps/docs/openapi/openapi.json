@@ -70,12 +70,12 @@
           "School"
         ],
         "summary": "Search schools by name",
-        "description": "Returns all NEIS school records matching the name. Defaults to 양정고등학교 (서울) when schoolname is omitted.",
+        "description": "Returns all NEIS school records matching schoolname (required).",
         "parameters": [
           {
             "name": "schoolname",
             "in": "query",
-            "required": false,
+            "required": true,
             "schema": {
               "minLength": 1,
               "description": "Korean school name as registered in NEIS (e.g. 서울 양정고등학교).",
@@ -93,6 +93,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/SchoolInfoList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Response for status 400",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
                 }
               }
             }
