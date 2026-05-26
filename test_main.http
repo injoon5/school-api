@@ -15,22 +15,22 @@ Accept: text/html
 
 ###
 
-GET http://127.0.0.1:8000/school?schoolname=목운중학교
+GET http://127.0.0.1:8000/school?schoolname=양정고등학교
 Accept: application/json
 
 ###
 
-GET http://127.0.0.1:8000/classes?grade=1&schoolname=목운중학교
+GET http://127.0.0.1:8000/classes?grade=1&schoolname=양정고등학교
 Accept: application/json
 
 ###
 
-GET http://127.0.0.1:8000/timetable?grade=1&classno=1&week=0&schoolname=목운중학교
+GET http://127.0.0.1:8000/timetable?grade=1&classno=1&week=0&schoolname=양정고등학교
 Accept: application/json
 
 ###
 
-GET http://127.0.0.1:8000/lunch?startdate=20250526&enddate=20250526&schoolname=목운중학교
+GET http://127.0.0.1:8000/lunch?startdate=20250526&enddate=20250526&schoolname=양정고등학교
 Accept: application/json
 
 ###
