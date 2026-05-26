@@ -11,13 +11,18 @@ Use **either** \`schoolname\` **or** \`schoolcode\` (NEIS 7-digit code)—never 
 Failed requests return \`{ ok: false, error: { code, message, details? } }\` with an appropriate HTTP status.
 `.trim();
 
+/** Relative first so Scalar resolves the current host (preview, local, prod). */
 const OPENAPI_SERVERS = [
+  { url: "/", description: "Current host" },
   { url: "https://api.timefor.school", description: "Production" },
   { url: "http://localhost:8000", description: "Local development" },
 ] as const;
 
 export const openApiPluginConfig = {
   path: "/docs",
+  specPath: "/docs/json",
+  /** Inline spec so Scalar always has servers (avoids empty spec on relative url fetch). */
+  embedSpec: true,
   documentation: {
     info: {
       title: "TimeForSchool API",
@@ -45,6 +50,5 @@ export const openApiPluginConfig = {
       description:
         "NEIS school data and Comcigan timetables for Korean schools.",
     },
-    servers: [...OPENAPI_SERVERS],
   },
 };
