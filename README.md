@@ -23,9 +23,7 @@ See [packages/client/README.md](packages/client/README.md).
 
 ## API documentation
 
-OpenAPI is generated from Elysia route definitions in `src/app.ts` (`query` / `response` schemas, `detail` metadata). [`@elysiajs/openapi`](https://elysiajs.com/plugins/openapi) exposes the spec and a browser UI.
-
-The default UI **provider is Scalar** (`provider: 'swagger-ui'` is available if you need the legacy UI).
+OpenAPI follows [Elysia’s OpenAPI pattern](https://elysiajs.com/patterns/openapi): route `query` / `response` Typebox schemas, `detail` summaries, shared [models](https://elysiajs.com/patterns/openapi#models), and plugin config in `src/openapi-config.ts`. [`@elysiajs/openapi`](https://elysiajs.com/plugins/openapi) serves the spec and Scalar UI.
 
 | Resource | URL |
 |----------|-----|
@@ -35,7 +33,12 @@ The default UI **provider is Scalar** (`provider: 'swagger-ui'` is available if 
 
 Production docs: https://api.timefor.school/docs
 
-Tags in the sidebar (Meta, School, Classes, …) come from `documentation.tags` and each route’s `detail.tags`. Customize the Scalar shell (theme, layout, `servers`, etc.) with the plugin’s `scalar` option — see [Scalar API Reference configuration](https://scalar.com/products/api-references/configuration).
+- **Servers** — Production and `localhost:8000` are listed in the OpenAPI `servers` block and Scalar’s server picker.
+- **Tags** — Sidebar groups (Meta, School, Classes, …) from `documentation.tags` + each route’s `detail.tags`.
+- **Models** — Reusable response shapes (`ApiError`, `SchoolInfoList`, …) are registered with `.model()` and referenced by name in route `response` maps.
+- **Scalar** — `layout: modern`, default Fetch client, metadata title/description in `openApiPluginConfig.scalar`.
+
+Legacy Swagger UI: set `provider: 'swagger-ui'` on the plugin. Further UI tweaks: [Scalar configuration](https://scalar.com/products/api-references/configuration).
 
 ## Setup
 
