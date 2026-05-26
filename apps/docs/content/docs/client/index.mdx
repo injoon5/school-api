@@ -5,6 +5,10 @@ description: "@timeforschool/client — NEIS and Comcigan helpers"
 
 The [`@timeforschool/client`](https://www.npmjs.com/package/@timeforschool/client) package wraps upstream Korean school APIs with typed methods and structured errors.
 
+## Hosted HTTP API
+
+The production API at [api.timefor.school](https://api.timefor.school) mirrors these capabilities. Pass **`schoolname`** or **`schoolcode`** on endpoints that need a school—never both. No route defaults to a particular school (including `GET /school`, which requires `schoolname`).
+
 ## Subpath exports
 
 | Import | Use case |
@@ -25,7 +29,7 @@ import { NeisClient, fetchTimeTable } from "@timeforschool/client";
 
 const neis = new NeisClient({ key: process.env.NEIS_API_KEY });
 
-const schools = await neis.schoolInfo({ SCHUL_NM: "양정고등학교" });
+const schools = await neis.schoolInfo({ SCHUL_NM: "목운중학교" });
 const school = schools[0];
 
 const table = await fetchTimeTable({

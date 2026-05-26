@@ -1,13 +1,4 @@
 {
   "title": "Documentation",
-  "pages": [
-    "index",
-    "---Client---",
-    "client",
-    "client/neis",
-    "client/timetable",
-    "client/errors",
-    "---HTTP API---",
-    "api"
-  ]
+  "pages": ["index", "client", "api"]
 }

@@ -2,7 +2,7 @@ const API_DESCRIPTION = `
 TimeForSchool wraps the Korean **NEIS Open API** (school info, classes, meals, calendar) and **Comcigan** (weekly class timetables).
 
 ### School identifier
-Use **either** \`schoolname\` **or** \`schoolcode\` (NEIS 7-digit code)—never both.
+Use **either** \`schoolname\` **or** \`schoolcode\` (NEIS 7-digit code)—never both. No endpoint defaults to a particular school; \`GET /school\` requires \`schoolname\`.
 
 ### Dates
 \`startdate\` / \`enddate\` use **YYYYMMDD** (e.g. \`20250526\`).
