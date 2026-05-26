@@ -1,6 +1,3 @@
-export const PRODUCTION_API =
-  process.env.PRODUCTION_API ?? "https://api.timefor.school";
-
 export function assert(condition: boolean, message: string): asserts condition {
   if (!condition) throw new Error(message);
 }
@@ -24,20 +21,6 @@ export async function requestJson(
   return { status: response.status, body };
 }
 
-export async function fetchProduction(
-  path: string,
-): Promise<{ status: number; body: unknown }> {
-  const response = await fetch(`${PRODUCTION_API}${path}`);
-  const text = await response.text();
-  let body: unknown;
-  try {
-    body = JSON.parse(text);
-  } catch {
-    body = text;
-  }
-  return { status: response.status, body };
-}
-
 export function isErrorBody(body: unknown): body is {
   ok: false;
   error: { code: string; message: string };
@@ -47,51 +30,6 @@ export function isErrorBody(body: unknown): body is {
     body !== null &&
     (body as { ok?: boolean }).ok === false &&
     typeof (body as { error?: { code?: string } }).error?.code === "string"
-  );
-}
-
-/** Legacy api.timefor.school (Python) error shape */
-export function isLegacyErrorBody(
-  body: unknown,
-): body is { error: true; message: string; data: null } {
-  return (
-    typeof body === "object" &&
-    body !== null &&
-    (body as { error?: boolean }).error === true &&
-    !("ok" in (body as object))
-  );
-}
-
-export function isAnyErrorBody(body: unknown): boolean {
-  return isErrorBody(body) || isLegacyErrorBody(body);
-}
-
-export function errorMessage(body: unknown): string | undefined {
-  if (isErrorBody(body)) return body.error.message;
-  if (isLegacyErrorBody(body)) return body.message;
-  return undefined;
-}
-
-export function normalizeJson(value: unknown): unknown {
-  if (value === null || value === undefined) return value;
-  if (typeof value === "number" && Number.isFinite(value)) {
-    return Number.isInteger(value) ? value : Math.round(value * 1000) / 1000;
-  }
-  if (Array.isArray(value)) return value.map(normalizeJson);
-  if (typeof value === "object") {
-    const obj = value as Record<string, unknown>;
-    return Object.fromEntries(
-      Object.keys(obj)
-        .sort()
-        .map((key) => [key, normalizeJson(obj[key])]),
-    );
-  }
-  return value;
-}
-
-export function jsonEqual(a: unknown, b: unknown): boolean {
-  return (
-    JSON.stringify(normalizeJson(a)) === JSON.stringify(normalizeJson(b))
   );
 }
 
@@ -200,19 +138,4 @@ export function assertStructuredError(
     typeof body.error.message === "string" && body.error.message.length > 0,
     "error message required",
   );
-}
-
-/** Both bodies share the same top-level JSON kind (array vs object vs error). */
-export function assertSameTopLevelKind(
-  local: unknown,
-  prod: unknown,
-  label: string,
-): void {
-  const kind = (v: unknown) => {
-    if (isAnyErrorBody(v)) return "error";
-    if (Array.isArray(v)) return "array";
-    if (typeof v === "object" && v !== null) return "object";
-    return typeof v;
-  };
-  assert(kind(local) === kind(prod), `${label}: shape mismatch (${kind(local)} vs ${kind(prod)})`);
 }

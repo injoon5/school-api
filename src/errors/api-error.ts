@@ -166,15 +166,3 @@ export function isApiErrorBody(body: unknown): body is ApiErrorBody {
     typeof (body as ApiErrorBody).error?.code === "string"
   );
 }
-
-/** Legacy production shape: `{ error: true, message, data: null }` */
-export function isLegacyErrorBody(
-  body: unknown,
-): body is { error: true; message: string; data: null } {
-  return (
-    typeof body === "object" &&
-    body !== null &&
-    (body as { error?: boolean }).error === true &&
-    !("ok" in (body as object))
-  );
-}

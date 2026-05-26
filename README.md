@@ -100,7 +100,7 @@ Errors use a consistent JSON shape and HTTP status code:
 - `npm run build` — build `@schoolkit/client`, then compile API to `dist/`
 - `npm run build:client` — build client package only
 - `npm start` — run compiled server
-- `npm test` — smoke tests + comparison with api.timefor.school
+- `npm test` — structural smoke tests
 
 ## Deploy to Vercel
 
