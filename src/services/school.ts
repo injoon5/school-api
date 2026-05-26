@@ -1,15 +1,7 @@
-import { NeisClient, type SchoolInfoRow } from "@timeforschool/client";
-import { NEIS_API_KEY } from "../config.js";
+import type { SchoolInfoRow } from "@timeforschool/client";
+import type { SchoolIdentifier } from "../schemas/common.js";
 import { ApiError } from "../errors/api-error.js";
-
-export interface SchoolIdentifier {
-  schoolname?: string;
-  schoolcode?: string;
-}
-
-function neis() {
-  return new NeisClient({ key: NEIS_API_KEY });
-}
+import { createNeisClient } from "./neis.js";
 
 export function assertSingleSchoolParam({
   schoolname,
@@ -35,7 +27,7 @@ export async function resolveSchool(
   assertSingleSchoolParam(params);
   requireSchoolParam(params);
 
-  const client = neis();
+  const client = createNeisClient();
   const rows = params.schoolname
     ? await client.schoolInfo({ SCHUL_NM: params.schoolname })
     : await client.schoolInfo({ SD_SCHUL_CODE: params.schoolcode! });

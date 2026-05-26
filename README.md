@@ -23,7 +23,7 @@ See [packages/client/README.md](packages/client/README.md).
 
 ## API documentation
 
-OpenAPI is generated from Elysia route definitions in `src/app.ts` (`query` / `response` schemas, `detail` metadata). [`@elysiajs/openapi`](https://elysiajs.com/plugins/openapi) exposes the spec and a browser UI.
+OpenAPI is generated from Elysia route definitions in `src/app.ts` (thin controllers) and Typebox models in `src/schemas/`. Business logic lives in `src/services/`. [`@elysiajs/openapi`](https://elysiajs.com/plugins/openapi) exposes the spec and a browser UI.
 
 The default UI **provider is Scalar** (`provider: 'swagger-ui'` is available if you need the legacy UI).
 

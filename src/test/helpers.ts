@@ -1,3 +1,9 @@
+import type { Static } from "elysia";
+import {
+  TimetablePeriodSchema,
+  TimetableResponseSchema,
+} from "../schemas/responses.js";
+
 export function assert(condition: boolean, message: string): asserts condition {
   if (!condition) throw new Error(message);
 }
@@ -33,23 +39,8 @@ export function isErrorBody(body: unknown): body is {
   );
 }
 
-export interface TimetablePeriod {
-  period: number;
-  subject: string;
-  teacher: string;
-  replaced: boolean;
-  original: {
-    period: number;
-    subject: string;
-    teacher: string;
-  } | null;
-}
-
-export interface TimetableResponse {
-  day_time: string[];
-  timetable: TimetablePeriod[][];
-  update_date: string;
-}
+export type TimetablePeriod = Static<typeof TimetablePeriodSchema>;
+export type TimetableResponse = Static<typeof TimetableResponseSchema>;
 
 export function assertTimetablePeriod(entry: unknown): asserts entry is TimetablePeriod {
   assert(typeof entry === "object" && entry !== null, "period entry must be object");
