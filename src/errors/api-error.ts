@@ -6,6 +6,8 @@ import {
   TimetableParseError,
   TimetableSchoolNotFoundError,
 } from "@timeforschool/client";
+import type { Static } from "elysia";
+import { ApiErrorSchema } from "../schemas/common.js";
 
 export const ErrorCode = {
   VALIDATION: "VALIDATION_ERROR",
@@ -23,42 +25,41 @@ export const ErrorCode = {
 
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];
 
-export interface ApiErrorBody {
-  ok: false;
-  error: {
-    code: ErrorCode;
-    message: string;
-    details?: Record<string, unknown>;
-  };
-}
+export type ApiErrorBody = Static<typeof ApiErrorSchema>;
 
 export class ApiError extends Error {
   readonly code: ErrorCode;
-  readonly status: number;
+  /** HTTP status; named httpStatus so Elysia does not treat this as a built-in status error. */
+  readonly httpStatus: number;
   readonly details?: Record<string, unknown>;
 
   constructor(
     code: ErrorCode,
-    status: number,
+    httpStatus: number,
     message: string,
     details?: Record<string, unknown>,
   ) {
     super(message);
     this.name = "ApiError";
     this.code = code;
-    this.status = status;
+    this.httpStatus = httpStatus;
     this.details = details;
   }
 
   toJSON(): ApiErrorBody {
-    return {
+    const body: ApiErrorBody = {
       ok: false,
       error: {
         code: this.code,
         message: this.message,
-        ...(this.details ? { details: this.details } : {}),
       },
     };
+    if (this.details) {
+      body.error.details = this.details as NonNullable<
+        ApiErrorBody["error"]["details"]
+      >;
+    }
+    return body;
   }
 
   static conflictingSchoolParams(): ApiError {

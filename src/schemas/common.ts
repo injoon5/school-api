@@ -1,4 +1,4 @@
-import { t } from "elysia";
+import { type Static, t } from "elysia";
 
 /** YYYYMMDD */
 export const DateYmd = t.String({
@@ -30,6 +30,14 @@ export const SchoolQuery = t.Object(
   },
 );
 
+export type SchoolIdentifier = Static<typeof SchoolQuery>;
+
+export const SchoolSearchQuery = t.Object({
+  schoolname: t.Optional(SchoolName),
+});
+
+export type SchoolSearchParams = Static<typeof SchoolSearchQuery>;
+
 export const Grade = t.Numeric({
   minimum: 1,
   maximum: 6,
@@ -52,6 +60,36 @@ export const Week = t.Optional(
     description: "0 = current week, 1 = next week.",
   }),
 );
+
+export const ClassesQuery = t.Composite([
+  SchoolQuery,
+  t.Object({
+    grade: Grade,
+  }),
+]);
+
+export type ClassesQueryParams = Static<typeof ClassesQuery>;
+
+export const DateRangeSchoolQuery = t.Composite([
+  SchoolQuery,
+  t.Object({
+    startdate: DateYmd,
+    enddate: DateYmd,
+  }),
+]);
+
+export type DateRangeSchoolQueryParams = Static<typeof DateRangeSchoolQuery>;
+
+export const TimetableQuery = t.Composite([
+  SchoolQuery,
+  t.Object({
+    grade: Grade,
+    classno: ClassNo,
+    week: Week,
+  }),
+]);
+
+export type TimetableQueryParams = Static<typeof TimetableQuery>;
 
 export const ApiErrorSchema = t.Object({
   ok: t.Literal(false),

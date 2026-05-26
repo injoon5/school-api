@@ -6,6 +6,8 @@ const neisString = (description: string, example: string) =>
 const neisOptionalString = (description: string, example: string) =>
   t.Optional(t.String({ description, examples: [example] }));
 
+export const ClassListSchema = t.Array(t.String({ examples: ["1", "2", "3"] }));
+
 /** GET / */
 export const ApiMetaSchema = t.Object({
   name: t.String({ examples: ["TimeForSchool"] }),
