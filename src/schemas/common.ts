@@ -58,6 +58,8 @@ export const ApiErrorSchema = t.Object({
   error: t.Object({
     code: t.String(),
     message: t.String(),
-    details: t.Optional(t.Record(t.String(), t.Any())),
+    details: t.Optional(
+      t.Record(t.String(), t.Union([t.String(), t.Number(), t.Boolean()])),
+    ),
   }),
 });

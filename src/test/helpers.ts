@@ -58,7 +58,7 @@ export function assertTimetablePeriod(entry: unknown): asserts entry is Timetabl
   assert(typeof p.subject === "string", "subject must be string");
   assert(typeof p.teacher === "string", "teacher must be string");
   assert(typeof p.replaced === "boolean", "replaced must be boolean");
-  if (p.original !== null) {
+  if (p.original != null) {
     assert(typeof p.original === "object", "original must be object or null");
     assert(typeof p.original.subject === "string", "original.subject must be string");
   }
