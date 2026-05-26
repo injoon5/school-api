@@ -1,5 +1,5 @@
 import { cors } from "@elysiajs/cors";
-import { swagger } from "@elysiajs/swagger";
+import { openapi } from "@elysiajs/openapi";
 import {
   fetchTimeTable,
   NeisClient,
@@ -53,7 +53,7 @@ export const app = new Elysia({ name: "timeforschool" })
     }),
   )
   .use(
-    swagger({
+    openapi({
       path: "/docs",
       documentation: {
         info: {

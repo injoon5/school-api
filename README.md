@@ -4,7 +4,7 @@ TypeScript API for NEIS school data (school info, classes, lunch, schedule) and 
 
 Production: https://api.timefor.school
 
-Built with [Elysia](https://elysiajs.com). Interactive reference UI is [Scalar](https://scalar.com) (via [`@elysiajs/swagger`](https://elysiajs.com/plugins/swagger)).
+Built with [Elysia](https://elysiajs.com). Interactive reference UI is [Scalar](https://scalar.com) (via [`@elysiajs/openapi`](https://elysiajs.com/plugins/openapi)).
 
 ## Monorepo
 
@@ -23,9 +23,9 @@ See [packages/client/README.md](packages/client/README.md).
 
 ## API documentation
 
-OpenAPI is generated from Elysia route definitions in `src/app.ts` (`query` / `response` schemas, `detail` metadata). [`@elysiajs/swagger`](https://elysiajs.com/plugins/swagger) exposes the spec and a browser UI.
+OpenAPI is generated from Elysia route definitions in `src/app.ts` (`query` / `response` schemas, `detail` metadata). [`@elysiajs/openapi`](https://elysiajs.com/plugins/openapi) exposes the spec and a browser UI.
 
-The default UI **provider is Scalar**, not Swagger UI. (`provider: 'swagger-ui'` is available if you need the legacy UI.)
+The default UI **provider is Scalar** (`provider: 'swagger-ui'` is available if you need the legacy UI).
 
 | Resource | URL |
 |----------|-----|
@@ -35,9 +35,7 @@ The default UI **provider is Scalar**, not Swagger UI. (`provider: 'swagger-ui'`
 
 Production docs: https://api.timefor.school/docs
 
-Tags in the sidebar (Meta, School, Classes, …) come from `documentation.tags` and each route’s `detail.tags`. Customize the Scalar shell (theme, layout, `servers`, etc.) with the plugin’s `scalarConfig` — see [Scalar API Reference configuration](https://scalar.com/products/api-references/configuration).
-
-> `@elysiajs/swagger` is [deprecated upstream](https://elysiajs.com/plugins/swagger) in favor of [`@elysiajs/openapi`](https://elysiajs.com/plugins/openapi) (same Scalar default, default path `/openapi`). This repo still uses swagger with `path: '/docs'`; switching plugins is optional maintenance.
+Tags in the sidebar (Meta, School, Classes, …) come from `documentation.tags` and each route’s `detail.tags`. Customize the Scalar shell (theme, layout, `servers`, etc.) with the plugin’s `scalar` option — see [Scalar API Reference configuration](https://scalar.com/products/api-references/configuration).
 
 ## Setup
 
