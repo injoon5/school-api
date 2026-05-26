@@ -1,0 +1,61 @@
+---
+title: NEIS client
+description: School info, classes, meals, and calendar via NeisClient
+---
+
+```ts
+import { NeisClient, NeisDataNotFoundError } from "@timeforschool/client";
+// or: import { NeisClient } from "@timeforschool/client/neis";
+```
+
+## Construction
+
+```ts
+const neis = new NeisClient({
+  key: process.env.NEIS_API_KEY, // optional; sample key used when omitted
+  pIndex: 1,
+  pSize: 100,
+});
+```
+
+## Methods
+
+| Method | NEIS endpoint | Notes |
+| ------ | ------------- | ----- |
+| `schoolInfo` | `schoolInfo` | Search by `SCHUL_NM` or codes |
+| `classInfo` | `classInfo` | Requires office + school codes and `GRADE` |
+| `mealServiceDietInfo` | `mealServiceDietInfo` | `MLSV_FROM_YMD` / `MLSV_TO_YMD` as `YYYYMMDD` |
+| `schoolSchedule` | `SchoolSchedule` | `AA_FROM_YMD` / `AA_TO_YMD` as `YYYYMMDD` |
+
+## Example
+
+```ts
+const schools = await neis.schoolInfo({ SCHUL_NM: "양정고등학교" });
+const school = schools[0];
+
+const classes = await neis.classInfo({
+  ATPT_OFCDC_SC_CODE: school.ATPT_OFCDC_SC_CODE,
+  SD_SCHUL_CODE: school.SD_SCHUL_CODE,
+  GRADE: "1",
+});
+
+const meals = await neis.mealServiceDietInfo({
+  ATPT_OFCDC_SC_CODE: school.ATPT_OFCDC_SC_CODE,
+  SD_SCHUL_CODE: school.SD_SCHUL_CODE,
+  MLSV_FROM_YMD: "20250526",
+  MLSV_TO_YMD: "20250526",
+});
+
+try {
+  await neis.schoolSchedule({
+    ATPT_OFCDC_SC_CODE: school.ATPT_OFCDC_SC_CODE,
+    SD_SCHUL_CODE: school.SD_SCHUL_CODE,
+    AA_FROM_YMD: "20250301",
+    AA_TO_YMD: "20250331",
+  });
+} catch (e) {
+  if (e instanceof NeisDataNotFoundError) {
+    // no events in range
+  }
+}
+```

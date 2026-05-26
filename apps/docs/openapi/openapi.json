@@ -1,0 +1,1442 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "TimeForSchool API",
+    "description": "TimeForSchool wraps the Korean **NEIS Open API** (school info, classes, meals, calendar) and **Comcigan** (weekly class timetables).\n\n### School identifier\nUse **either** `schoolname` **or** `schoolcode` (NEIS 7-digit code)—never both.\n\n### Dates\n`startdate` / `enddate` use **YYYYMMDD** (e.g. `20250526`).\n\n### Errors\nFailed requests return `{ ok: false, error: { code, message, details? } }` with an appropriate HTTP status.",
+    "version": "0.0.1"
+  },
+  "tags": [
+    {
+      "name": "Meta",
+      "description": "Service metadata"
+    },
+    {
+      "name": "School",
+      "description": "NEIS school profile"
+    },
+    {
+      "name": "Classes",
+      "description": "Class numbers by grade"
+    },
+    {
+      "name": "Timetable",
+      "description": "Weekly timetable (Comcigan)"
+    },
+    {
+      "name": "Lunch",
+      "description": "Meal menus (NEIS)"
+    },
+    {
+      "name": "Schedule",
+      "description": "School calendar (NEIS)"
+    }
+  ],
+  "servers": [
+    {
+      "url": "https://api.timefor.school",
+      "description": "Production"
+    },
+    {
+      "url": "http://localhost:8000",
+      "description": "Local development"
+    }
+  ],
+  "paths": {
+    "/": {
+      "get": {
+        "tags": [
+          "Meta"
+        ],
+        "summary": "API info",
+        "description": "Service name, version, and links to interactive documentation.",
+        "responses": {
+          "200": {
+            "description": "Response for status 200",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiMeta"
+                }
+              }
+            }
+          }
+        },
+        "operationId": "getIndex"
+      }
+    },
+    "/school": {
+      "get": {
+        "tags": [
+          "School"
+        ],
+        "summary": "Search schools by name",
+        "description": "Returns all NEIS school records matching the name. Defaults to 양정고등학교 (서울) when schoolname is omitted.",
+        "parameters": [
+          {
+            "name": "schoolname",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "minLength": 1,
+              "description": "Korean school name as registered in NEIS (e.g. 서울 양정고등학교).",
+              "examples": [
+                "양정고등학교"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Response for status 200",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchoolInfoList"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Response for status 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Response for status 502",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "operationId": "getSchool"
+      }
+    },
+    "/classes": {
+      "get": {
+        "tags": [
+          "Classes"
+        ],
+        "summary": "List class numbers for a grade",
+        "description": "Returns sorted class names (반) for the given school and grade using NEIS classInfo.",
+        "parameters": [
+          {
+            "name": "schoolname",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "minLength": 1,
+              "description": "Korean school name as registered in NEIS (e.g. 서울 양정고등학교).",
+              "examples": [
+                "양정고등학교"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "schoolcode",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "pattern": "^\\d{7}$",
+              "description": "NEIS standard school code (SD_SCHUL_CODE), 7 digits.",
+              "examples": [
+                "7010208"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "grade",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "minimum": 1,
+              "maximum": 6,
+              "description": "Grade level (학년).",
+              "examples": [
+                1
+              ],
+              "anyOf": [
+                {
+                  "format": "numeric",
+                  "default": 0,
+                  "type": "string"
+                },
+                {
+                  "minimum": 1,
+                  "maximum": 6,
+                  "description": "Grade level (학년).",
+                  "examples": [
+                    1
+                  ],
+                  "type": "number"
+                }
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Response for status 200",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Response for status 400",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Response for status 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Response for status 502",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "operationId": "getClasses"
+      }
+    },
+    "/timetable": {
+      "get": {
+        "tags": [
+          "Timetable"
+        ],
+        "summary": "Weekly class timetable",
+        "description": "Fetches the class schedule from Comcigan. Provide schoolname, or schoolcode alone (name is resolved via NEIS). week: 0 = this week, 1 = next week. Most periods have `replaced: false` and `original: null`; when a period was substituted, `replaced` is true and `original` is the class before the change.",
+        "parameters": [
+          {
+            "name": "schoolname",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "minLength": 1,
+              "description": "Korean school name as registered in NEIS (e.g. 서울 양정고등학교).",
+              "examples": [
+                "양정고등학교"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "schoolcode",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "pattern": "^\\d{7}$",
+              "description": "NEIS standard school code (SD_SCHUL_CODE), 7 digits.",
+              "examples": [
+                "7010208"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "grade",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "minimum": 1,
+              "maximum": 6,
+              "description": "Grade level (학년).",
+              "examples": [
+                1
+              ],
+              "anyOf": [
+                {
+                  "format": "numeric",
+                  "default": 0,
+                  "type": "string"
+                },
+                {
+                  "minimum": 1,
+                  "maximum": 6,
+                  "description": "Grade level (학년).",
+                  "examples": [
+                    1
+                  ],
+                  "type": "number"
+                }
+              ]
+            }
+          },
+          {
+            "name": "classno",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "minimum": 1,
+              "maximum": 30,
+              "description": "Class number within the grade (반).",
+              "examples": [
+                3
+              ],
+              "anyOf": [
+                {
+                  "format": "numeric",
+                  "default": 0,
+                  "type": "string"
+                },
+                {
+                  "minimum": 1,
+                  "maximum": 30,
+                  "description": "Class number within the grade (반).",
+                  "examples": [
+                    3
+                  ],
+                  "type": "number"
+                }
+              ]
+            }
+          },
+          {
+            "name": "week",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "maximum": 1,
+              "default": 0,
+              "description": "0 = current week, 1 = next week.",
+              "anyOf": [
+                {
+                  "format": "numeric",
+                  "default": 0,
+                  "type": "string"
+                },
+                {
+                  "minimum": 0,
+                  "maximum": 1,
+                  "default": 0,
+                  "description": "0 = current week, 1 = next week.",
+                  "type": "number"
+                }
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Response for status 200",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TimetableResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Response for status 400",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Response for status 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Response for status 409",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Response for status 502",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "operationId": "getTimetable"
+      }
+    },
+    "/lunch": {
+      "get": {
+        "tags": [
+          "Lunch"
+        ],
+        "summary": "Meal menus for a date range",
+        "description": "Returns NEIS mealServiceDietInfo rows. Parentheses are stripped from dish names; HTML line breaks become newlines.",
+        "parameters": [
+          {
+            "name": "schoolname",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "minLength": 1,
+              "description": "Korean school name as registered in NEIS (e.g. 서울 양정고등학교).",
+              "examples": [
+                "양정고등학교"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "schoolcode",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "pattern": "^\\d{7}$",
+              "description": "NEIS standard school code (SD_SCHUL_CODE), 7 digits.",
+              "examples": [
+                "7010208"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "startdate",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "pattern": "^\\d{8}$",
+              "description": "Calendar date in YYYYMMDD format (e.g. 20250526).",
+              "examples": [
+                "20250526"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "enddate",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "pattern": "^\\d{8}$",
+              "description": "Calendar date in YYYYMMDD format (e.g. 20250526).",
+              "examples": [
+                "20250526"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Response for status 200",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MealList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Response for status 400",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Response for status 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Response for status 502",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "operationId": "getLunch"
+      }
+    },
+    "/schedule": {
+      "get": {
+        "tags": [
+          "Schedule"
+        ],
+        "summary": "School calendar events",
+        "description": "Returns NEIS SchoolSchedule rows between startdate and enddate (inclusive).",
+        "parameters": [
+          {
+            "name": "schoolname",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "minLength": 1,
+              "description": "Korean school name as registered in NEIS (e.g. 서울 양정고등학교).",
+              "examples": [
+                "양정고등학교"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "schoolcode",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "pattern": "^\\d{7}$",
+              "description": "NEIS standard school code (SD_SCHUL_CODE), 7 digits.",
+              "examples": [
+                "7010208"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "startdate",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "pattern": "^\\d{8}$",
+              "description": "Calendar date in YYYYMMDD format (e.g. 20250526).",
+              "examples": [
+                "20250526"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "enddate",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "pattern": "^\\d{8}$",
+              "description": "Calendar date in YYYYMMDD format (e.g. 20250526).",
+              "examples": [
+                "20250526"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Response for status 200",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduleList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Response for status 400",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Response for status 404",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Response for status 502",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "operationId": "getSchedule"
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ApiMeta": {
+        "type": "object",
+        "required": [
+          "name",
+          "version",
+          "docs",
+          "openapi"
+        ],
+        "properties": {
+          "name": {
+            "examples": [
+              "TimeForSchool"
+            ],
+            "type": "string"
+          },
+          "version": {
+            "examples": [
+              "0.0.1"
+            ],
+            "type": "string"
+          },
+          "docs": {
+            "examples": [
+              "/docs"
+            ],
+            "type": "string"
+          },
+          "openapi": {
+            "examples": [
+              "/docs/json"
+            ],
+            "type": "string"
+          }
+        },
+        "$id": "#/components/schemas/ApiMeta"
+      },
+      "ApiError": {
+        "type": "object",
+        "required": [
+          "ok",
+          "error"
+        ],
+        "properties": {
+          "ok": {
+            "const": false,
+            "type": "boolean"
+          },
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "details": {
+                "type": "object",
+                "patternProperties": {
+                  "^(.*)$": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "$id": "#/components/schemas/ApiError"
+      },
+      "SchoolInfoList": {
+        "minItems": 1,
+        "examples": [
+          [
+            {
+              "ATPT_OFCDC_SC_CODE": "B10",
+              "ATPT_OFCDC_SC_NM": "서울특별시교육청",
+              "SD_SCHUL_CODE": "7010208",
+              "SCHUL_NM": "양정고등학교",
+              "ENG_SCHUL_NM": "Yangchung High School",
+              "SCHUL_KND_SC_NM": "고등학교",
+              "LCTN_SC_NM": "서울특별시",
+              "JU_ORG_NM": "서울특별시교육청",
+              "FOND_SC_NM": "사립",
+              "ORG_RDNZC": "07985",
+              "ORG_RDNMA": "서울특별시 양천구 안양천로 1039",
+              "ORG_RDNDA": "(목동)",
+              "ORG_TELNO": "02-2649-7072",
+              "HMPG_ADRES": "https://yangchung.sen.hs.kr",
+              "COEDU_SC_NM": "남",
+              "ORG_FAXNO": "02-2649-7079",
+              "HS_SC_NM": "일반고",
+              "INDST_SPECL_CCCCL_EXST_YN": "N",
+              "HS_GNRL_BUSNS_SC_NM": "일반계",
+              "ENE_BFE_SEHF_SC_NM": "해당없음",
+              "DGHT_SC_NM": "주간",
+              "FOND_YMD": "19700301",
+              "FOAS_MEMRD": "19700301",
+              "LOAD_DTM": "20250526120000"
+            }
+          ]
+        ],
+        "type": "array",
+        "items": {
+          "additionalProperties": true,
+          "type": "object",
+          "required": [
+            "ATPT_OFCDC_SC_CODE",
+            "ATPT_OFCDC_SC_NM",
+            "SD_SCHUL_CODE",
+            "SCHUL_NM",
+            "ENG_SCHUL_NM",
+            "SCHUL_KND_SC_NM",
+            "LCTN_SC_NM",
+            "JU_ORG_NM",
+            "FOND_SC_NM",
+            "ORG_RDNZC",
+            "ORG_RDNMA",
+            "ORG_RDNDA",
+            "ORG_TELNO",
+            "HMPG_ADRES",
+            "COEDU_SC_NM",
+            "ORG_FAXNO",
+            "INDST_SPECL_CCCCL_EXST_YN",
+            "HS_GNRL_BUSNS_SC_NM",
+            "ENE_BFE_SEHF_SC_NM",
+            "DGHT_SC_NM",
+            "FOND_YMD",
+            "FOAS_MEMRD",
+            "LOAD_DTM"
+          ],
+          "properties": {
+            "ATPT_OFCDC_SC_CODE": {
+              "description": "Office of education code",
+              "examples": [
+                "B10"
+              ],
+              "type": "string"
+            },
+            "ATPT_OFCDC_SC_NM": {
+              "description": "Office of education name",
+              "examples": [
+                "서울특별시교육청"
+              ],
+              "type": "string"
+            },
+            "SD_SCHUL_CODE": {
+              "description": "School code",
+              "examples": [
+                "7010208"
+              ],
+              "type": "string"
+            },
+            "SCHUL_NM": {
+              "description": "School name",
+              "examples": [
+                "양정고등학교"
+              ],
+              "type": "string"
+            },
+            "ENG_SCHUL_NM": {
+              "description": "English school name",
+              "examples": [
+                "Yangchung High School"
+              ],
+              "type": "string"
+            },
+            "SCHUL_KND_SC_NM": {
+              "description": "School kind",
+              "examples": [
+                "고등학교"
+              ],
+              "type": "string"
+            },
+            "LCTN_SC_NM": {
+              "description": "Location",
+              "examples": [
+                "서울특별시"
+              ],
+              "type": "string"
+            },
+            "JU_ORG_NM": {
+              "description": "Administrative organization",
+              "examples": [
+                "서울특별시교육청"
+              ],
+              "type": "string"
+            },
+            "FOND_SC_NM": {
+              "description": "Establishment type",
+              "examples": [
+                "사립"
+              ],
+              "type": "string"
+            },
+            "ORG_RDNZC": {
+              "description": "Postal code",
+              "examples": [
+                "07985"
+              ],
+              "type": "string"
+            },
+            "ORG_RDNMA": {
+              "description": "Road address",
+              "examples": [
+                "서울특별시 양천구 안양천로 1039"
+              ],
+              "type": "string"
+            },
+            "ORG_RDNDA": {
+              "description": "Address detail",
+              "examples": [
+                "(목동)"
+              ],
+              "type": "string"
+            },
+            "ORG_TELNO": {
+              "description": "Phone",
+              "examples": [
+                "02-2649-7072"
+              ],
+              "type": "string"
+            },
+            "HMPG_ADRES": {
+              "description": "Website",
+              "examples": [
+                "https://yangchung.sen.hs.kr"
+              ],
+              "type": "string"
+            },
+            "COEDU_SC_NM": {
+              "description": "Coeducation",
+              "examples": [
+                "남"
+              ],
+              "type": "string"
+            },
+            "ORG_FAXNO": {
+              "description": "Fax",
+              "examples": [
+                "02-2649-7079"
+              ],
+              "type": "string"
+            },
+            "HS_SC_NM": {
+              "description": "High school division",
+              "examples": [
+                "일반고"
+              ],
+              "type": "string"
+            },
+            "INDST_SPECL_CCCCL_EXST_YN": {
+              "description": "Industry cluster exists",
+              "examples": [
+                "N"
+              ],
+              "type": "string"
+            },
+            "HS_GNRL_BUSNS_SC_NM": {
+              "description": "General/vocational",
+              "examples": [
+                "일반계"
+              ],
+              "type": "string"
+            },
+            "SPCLY_PURPS_HS_ORD_NM": {
+              "description": "Special-purpose high school order",
+              "examples": [
+                "해당없음"
+              ],
+              "type": "string"
+            },
+            "ENE_BFE_SEHF_SC_NM": {
+              "description": "Energy before self-help",
+              "examples": [
+                "해당없음"
+              ],
+              "type": "string"
+            },
+            "DGHT_SC_NM": {
+              "description": "Day/night",
+              "examples": [
+                "주간"
+              ],
+              "type": "string"
+            },
+            "FOND_YMD": {
+              "description": "Founded date",
+              "examples": [
+                "19700301"
+              ],
+              "type": "string"
+            },
+            "FOAS_MEMRD": {
+              "description": "Anniversary",
+              "examples": [
+                "19700301"
+              ],
+              "type": "string"
+            },
+            "LOAD_DTM": {
+              "description": "Loaded at",
+              "examples": [
+                "20250526120000"
+              ],
+              "type": "string"
+            }
+          }
+        },
+        "$id": "#/components/schemas/SchoolInfoList"
+      },
+      "ClassList": {
+        "type": "array",
+        "items": {
+          "examples": [
+            "1",
+            "2",
+            "3"
+          ],
+          "type": "string"
+        },
+        "$id": "#/components/schemas/ClassList"
+      },
+      "TimetableResponse": {
+        "type": "object",
+        "required": [
+          "day_time",
+          "timetable",
+          "update_date"
+        ],
+        "properties": {
+          "day_time": {
+            "minItems": 1,
+            "examples": [
+              [
+                "09:00",
+                "09:50",
+                "10:00"
+              ]
+            ],
+            "type": "array",
+            "items": {
+              "examples": [
+                "09:00"
+              ],
+              "type": "string"
+            }
+          },
+          "timetable": {
+            "minItems": 1,
+            "examples": [
+              [
+                [
+                  {
+                    "period": 1,
+                    "subject": "수학",
+                    "teacher": "김교사",
+                    "replaced": false,
+                    "original": null
+                  },
+                  {
+                    "period": 2,
+                    "subject": "체육",
+                    "teacher": "이교사",
+                    "replaced": false,
+                    "original": null
+                  },
+                  {
+                    "period": 3,
+                    "subject": "자율",
+                    "teacher": "",
+                    "replaced": true,
+                    "original": {
+                      "period": 3,
+                      "subject": "영어",
+                      "teacher": "박교사"
+                    }
+                  }
+                ]
+              ]
+            ],
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "period",
+                  "subject",
+                  "teacher",
+                  "replaced",
+                  "original"
+                ],
+                "properties": {
+                  "period": {
+                    "examples": [
+                      1
+                    ],
+                    "type": "number"
+                  },
+                  "subject": {
+                    "examples": [
+                      "수학"
+                    ],
+                    "type": "string"
+                  },
+                  "teacher": {
+                    "examples": [
+                      "김교사"
+                    ],
+                    "type": "string"
+                  },
+                  "replaced": {
+                    "description": "true only when this period was substituted; most periods are false.",
+                    "examples": [
+                      false
+                    ],
+                    "type": "boolean"
+                  },
+                  "original": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "required": [
+                          "period",
+                          "subject",
+                          "teacher"
+                        ],
+                        "properties": {
+                          "period": {
+                            "examples": [
+                              1
+                            ],
+                            "type": "number"
+                          },
+                          "subject": {
+                            "examples": [
+                              "영어"
+                            ],
+                            "type": "string"
+                          },
+                          "teacher": {
+                            "examples": [
+                              "김교사"
+                            ],
+                            "type": "string"
+                          }
+                        }
+                      },
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "additionalProperties": true,
+                        "type": "object",
+                        "properties": {
+                          "period": {
+                            "type": "number"
+                          },
+                          "subject": {
+                            "type": "string"
+                          },
+                          "teacher": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "update_date": {
+            "examples": [
+              "2025-05-26"
+            ],
+            "type": "string"
+          }
+        },
+        "$id": "#/components/schemas/TimetableResponse"
+      },
+      "MealList": {
+        "minItems": 1,
+        "examples": [
+          [
+            {
+              "ATPT_OFCDC_SC_CODE": "B10",
+              "SD_SCHUL_CODE": "7010208",
+              "SCHUL_NM": "양정고등학교",
+              "MMEAL_SC_CODE": "2",
+              "MMEAL_SC_NM": "중식",
+              "MLSV_YMD": "20250526",
+              "MLSV_FGR": 1,
+              "DDISH_NM": "밥\n미역국\n불고기",
+              "ORPLC_INFO": "쌀: 국내산",
+              "CAL_INFO": "650 Kcal",
+              "NTR_INFO": "탄수화물 90g",
+              "MLSV_FROM_YMD": "20250526",
+              "MLSV_TO_YMD": "20250526",
+              "LOAD_DTM": "20250526120000"
+            }
+          ]
+        ],
+        "type": "array",
+        "items": {
+          "additionalProperties": true,
+          "type": "object",
+          "required": [
+            "ATPT_OFCDC_SC_CODE",
+            "ATPT_OFCDC_SC_NM",
+            "SD_SCHUL_CODE",
+            "SCHUL_NM",
+            "MMEAL_SC_CODE",
+            "MMEAL_SC_NM",
+            "MLSV_YMD",
+            "MLSV_FGR",
+            "DDISH_NM",
+            "ORPLC_INFO",
+            "CAL_INFO",
+            "NTR_INFO",
+            "MLSV_FROM_YMD",
+            "MLSV_TO_YMD",
+            "LOAD_DTM"
+          ],
+          "properties": {
+            "ATPT_OFCDC_SC_CODE": {
+              "description": "Office of education code",
+              "examples": [
+                "B10"
+              ],
+              "type": "string"
+            },
+            "ATPT_OFCDC_SC_NM": {
+              "description": "Office of education name",
+              "examples": [
+                "서울특별시교육청"
+              ],
+              "type": "string"
+            },
+            "SD_SCHUL_CODE": {
+              "description": "School code",
+              "examples": [
+                "7010208"
+              ],
+              "type": "string"
+            },
+            "SCHUL_NM": {
+              "description": "School name",
+              "examples": [
+                "양정고등학교"
+              ],
+              "type": "string"
+            },
+            "MMEAL_SC_CODE": {
+              "description": "Meal code",
+              "examples": [
+                "1"
+              ],
+              "type": "string"
+            },
+            "MMEAL_SC_NM": {
+              "description": "Meal name",
+              "examples": [
+                "조식"
+              ],
+              "type": "string"
+            },
+            "MLSV_YMD": {
+              "description": "Meal date",
+              "examples": [
+                "20250526"
+              ],
+              "type": "string"
+            },
+            "MLSV_FGR": {
+              "description": "Meal sequence",
+              "examples": [
+                1
+              ],
+              "type": "number"
+            },
+            "DDISH_NM": {
+              "description": "Menu",
+              "examples": [
+                "밥\n미역국\n불고기"
+              ],
+              "type": "string"
+            },
+            "ORPLC_INFO": {
+              "description": "Origin info",
+              "examples": [
+                "쌀: 국내산"
+              ],
+              "type": "string"
+            },
+            "CAL_INFO": {
+              "description": "Calories",
+              "examples": [
+                "650 Kcal"
+              ],
+              "type": "string"
+            },
+            "NTR_INFO": {
+              "description": "Nutrition info",
+              "examples": [
+                "탄수화물 90g"
+              ],
+              "type": "string"
+            },
+            "MLSV_FROM_YMD": {
+              "description": "Range start",
+              "examples": [
+                "20250526"
+              ],
+              "type": "string"
+            },
+            "MLSV_TO_YMD": {
+              "description": "Range end",
+              "examples": [
+                "20250526"
+              ],
+              "type": "string"
+            },
+            "LOAD_DTM": {
+              "description": "Loaded at",
+              "examples": [
+                "20250526120000"
+              ],
+              "type": "string"
+            }
+          }
+        },
+        "$id": "#/components/schemas/MealList"
+      },
+      "ScheduleList": {
+        "minItems": 1,
+        "examples": [
+          [
+            {
+              "ATPT_OFCDC_SC_CODE": "B10",
+              "SD_SCHUL_CODE": "7010208",
+              "SCHUL_NM": "양정고등학교",
+              "AY": "2025",
+              "AA_YMD": "20250505",
+              "EVENT_NM": "어린이날",
+              "EVENT_CNTNT": "휴업일",
+              "LOAD_DTM": "20250526120000"
+            }
+          ]
+        ],
+        "type": "array",
+        "items": {
+          "additionalProperties": true,
+          "type": "object",
+          "required": [
+            "ATPT_OFCDC_SC_CODE",
+            "ATPT_OFCDC_SC_NM",
+            "SD_SCHUL_CODE",
+            "SCHUL_NM",
+            "AY",
+            "DGHT_CRSE_SC_NM",
+            "SCHUL_CRSE_SC_NM",
+            "SBTR_DD_SC_NM",
+            "AA_YMD",
+            "EVENT_NM",
+            "EVENT_CNTNT",
+            "ONE_GRADE_EVENT_YN",
+            "TW_GRADE_EVENT_YN",
+            "THREE_GRADE_EVENT_YN",
+            "FR_GRADE_EVENT_YN",
+            "FIV_GRADE_EVENT_YN",
+            "SIX_GRADE_EVENT_YN",
+            "LOAD_DTM"
+          ],
+          "properties": {
+            "ATPT_OFCDC_SC_CODE": {
+              "description": "Office of education code",
+              "examples": [
+                "B10"
+              ],
+              "type": "string"
+            },
+            "ATPT_OFCDC_SC_NM": {
+              "description": "Office of education name",
+              "examples": [
+                "서울특별시교육청"
+              ],
+              "type": "string"
+            },
+            "SD_SCHUL_CODE": {
+              "description": "School code",
+              "examples": [
+                "7010208"
+              ],
+              "type": "string"
+            },
+            "SCHUL_NM": {
+              "description": "School name",
+              "examples": [
+                "양정고등학교"
+              ],
+              "type": "string"
+            },
+            "AY": {
+              "description": "Academic year",
+              "examples": [
+                "2025"
+              ],
+              "type": "string"
+            },
+            "DGHT_CRSE_SC_NM": {
+              "description": "Day/night course",
+              "examples": [
+                "주간"
+              ],
+              "type": "string"
+            },
+            "SCHUL_CRSE_SC_NM": {
+              "description": "School course",
+              "examples": [
+                "고등학교"
+              ],
+              "type": "string"
+            },
+            "SBTR_DD_SC_NM": {
+              "description": "Holiday type",
+              "examples": [
+                "공휴일"
+              ],
+              "type": "string"
+            },
+            "AA_YMD": {
+              "description": "Event date",
+              "examples": [
+                "20250505"
+              ],
+              "type": "string"
+            },
+            "EVENT_NM": {
+              "description": "Event name",
+              "examples": [
+                "어린이날"
+              ],
+              "type": "string"
+            },
+            "EVENT_CNTNT": {
+              "description": "Event content",
+              "examples": [
+                "휴업일"
+              ],
+              "type": "string"
+            },
+            "ONE_GRADE_EVENT_YN": {
+              "description": "Applies to grade 1",
+              "examples": [
+                "Y"
+              ],
+              "type": "string"
+            },
+            "TW_GRADE_EVENT_YN": {
+              "description": "Applies to grade 2",
+              "examples": [
+                "Y"
+              ],
+              "type": "string"
+            },
+            "THREE_GRADE_EVENT_YN": {
+              "description": "Applies to grade 3",
+              "examples": [
+                "Y"
+              ],
+              "type": "string"
+            },
+            "FR_GRADE_EVENT_YN": {
+              "description": "Applies to grade 4",
+              "examples": [
+                "N"
+              ],
+              "type": "string"
+            },
+            "FIV_GRADE_EVENT_YN": {
+              "description": "Applies to grade 5",
+              "examples": [
+                "N"
+              ],
+              "type": "string"
+            },
+            "SIX_GRADE_EVENT_YN": {
+              "description": "Applies to grade 6",
+              "examples": [
+                "N"
+              ],
+              "type": "string"
+            },
+            "LOAD_DTM": {
+              "description": "Loaded at",
+              "examples": [
+                "20250526120000"
+              ],
+              "type": "string"
+            }
+          }
+        },
+        "$id": "#/components/schemas/ScheduleList"
+      }
+    }
+  }
+}

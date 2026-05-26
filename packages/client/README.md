@@ -11,6 +11,8 @@ TypeScript client for Korean school data APIs:
 npm install @timeforschool/client
 ```
 
+Full docs: [timefor.school/docs](https://timefor.school/docs) (monorepo: `apps/docs/`).
+
 In this monorepo:
 
 ```json

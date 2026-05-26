@@ -1,0 +1,32 @@
+---
+title: Introduction
+description: TimeForSchool API and TypeScript client for Korean school data
+---
+
+TimeForSchool provides a hosted HTTP API and an npm package for Korean school data:
+
+- **NEIS Open API** — school profiles, classes, lunch menus, calendars
+- **Comcigan** — weekly class timetables
+
+<Cards>
+  <Card title="TypeScript client" href="/docs/client" description="Use @timeforschool/client in Node or the browser" />
+  <Card title="HTTP API reference" href="/docs/api" description="Interactive OpenAPI docs for api.timefor.school" />
+</Cards>
+
+## Quick links
+
+| Resource | URL |
+| -------- | --- |
+| Production API | [api.timefor.school](https://api.timefor.school) |
+| Scalar (live) | [api.timefor.school/docs](https://api.timefor.school/docs) |
+| npm package | [`@timeforschool/client`](https://www.npmjs.com/package/@timeforschool/client) |
+
+## Install the client
+
+```bash
+npm install @timeforschool/client
+```
+
+```ts
+import { NeisClient, fetchTimeTable } from "@timeforschool/client";
+```

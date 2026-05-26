@@ -11,7 +11,34 @@ Built with [Elysia](https://elysiajs.com). Interactive reference UI is [Scalar](
 | Package | Path | Description |
 |---------|------|-------------|
 | `timeforschool-api` | repo root | HTTP API (`src/`) |
-| `@timeforschool/client` | `packages/client/` | NEIS + Comcigan client library |
+| `@timeforschool/client` | `packages/client/` | NEIS + Comcigan client library (publishable to npm) |
+| `@timeforschool/docs` | `apps/docs/` | Fumadocs site (client + OpenAPI reference) |
+
+## Documentation site
+
+[Fumadocs](https://www.fumadocs.dev/) + Next.js at `apps/docs/`:
+
+```bash
+npm run dev:docs          # http://localhost:3000
+npm run build:docs
+```
+
+When API routes or schemas change, refresh the committed OpenAPI artifact and generated MDX:
+
+```bash
+npm run openapi:sync
+```
+
+Deploy the docs app on Vercel with **Root Directory** `apps/docs` (see `apps/docs/vercel.json`).
+
+## Publishing `@timeforschool/client`
+
+```bash
+npm run build -w @timeforschool/client
+npm publish -w @timeforschool/client --access public
+```
+
+Requires an npm account with access to the `@timeforschool` scope. CI publish on GitHub Release uses `.github/workflows/publish-client.yml` and `NPM_TOKEN`.
 
 Use the client standalone:
 
