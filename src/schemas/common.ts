@@ -9,14 +9,15 @@ export const DateYmd = t.String({
 
 export const SchoolName = t.String({
   minLength: 1,
-  description: "Korean school name as registered in NEIS (e.g. 양정고등학교).",
-  examples: ["양정고등학교", "목운중학교"],
+  description:
+    "Korean school name as registered in NEIS (e.g. 서울 양정고등학교).",
+  examples: ["양정고등학교"],
 });
 
 export const SchoolCode = t.String({
   pattern: "^\\d{7}$",
   description: "NEIS standard school code (SD_SCHUL_CODE), 7 digits.",
-  examples: ["7010208", "7081492"],
+  examples: ["7010208"],
 });
 
 export const SchoolQuery = t.Object(
