@@ -1,6 +1,11 @@
-### API info + docs at http://127.0.0.1:8000/docs
+### API info — Scalar docs at /docs, OpenAPI at /docs/json
 
 GET http://127.0.0.1:8000/
+Accept: application/json
+
+###
+
+GET http://127.0.0.1:8000/docs/json
 Accept: application/json
 
 ###

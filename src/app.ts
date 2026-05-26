@@ -1,11 +1,11 @@
 import { cors } from "@elysiajs/cors";
-import { swagger } from "@elysiajs/swagger";
+import { openapi } from "@elysiajs/openapi";
 import {
   fetchTimeTable,
   NeisClient,
   Neispy,
 } from "@timeforschool/client";
-import { Elysia, t } from "elysia";
+import { Elysia, type Static, t } from "elysia";
 import { CORS_ORIGINS, NEIS_API_KEY } from "./config.js";
 import { ApiError, ErrorCode } from "./errors/api-error.js";
 import {
@@ -18,11 +18,19 @@ import {
   Week,
 } from "./schemas/common.js";
 import {
+  ApiMetaSchema,
+  MealListSchema,
+  ScheduleListSchema,
+  SchoolInfoListSchema,
+  TimetableResponseSchema,
+} from "./schemas/responses.js";
+import {
   assertSingleSchoolParam,
   lookupSchoolNameByCode,
   requireSchoolParam,
   resolveSchool,
 } from "./services/school.js";
+import { omitNullsFromRows } from "./utils/json.js";
 
 const REMOVE_PAREN_PATTERN = /\([^)]*\)/g;
 
@@ -53,7 +61,7 @@ export const app = new Elysia({ name: "timeforschool" })
     }),
   )
   .use(
-    swagger({
+    openapi({
       path: "/docs",
       documentation: {
         info: {
@@ -107,6 +115,9 @@ export const app = new Elysia({ name: "timeforschool" })
         summary: "API info",
         description: "Service name, version, and links to interactive documentation.",
       },
+      response: {
+        200: ApiMetaSchema,
+      },
     },
   )
   .get(
@@ -115,7 +126,8 @@ export const app = new Elysia({ name: "timeforschool" })
       handleRoute(async () => {
         const schoolname = query.schoolname ?? "목운중학교";
         const client = new NeisClient({ key: NEIS_API_KEY });
-        return client.schoolInfo({ SCHUL_NM: schoolname });
+        const schools = await client.schoolInfo({ SCHUL_NM: schoolname });
+        return omitNullsFromRows(schools) as Static<typeof SchoolInfoListSchema>;
       }),
     {
       query: t.Object({
@@ -128,7 +140,7 @@ export const app = new Elysia({ name: "timeforschool" })
           "Returns all NEIS school records matching the name. Defaults to 목운중학교 when schoolname is omitted.",
       },
       response: {
-        200: t.Any(),
+        200: SchoolInfoListSchema,
         404: ApiErrorSchema,
         502: ApiErrorSchema,
       },
@@ -233,7 +245,7 @@ export const app = new Elysia({ name: "timeforschool" })
           day_time: timetable.dayTime,
           timetable: weekDays,
           update_date: timetable.updateDate,
-        };
+        } as Static<typeof TimetableResponseSchema>;
       }),
     {
       query: t.Object({
@@ -247,14 +259,10 @@ export const app = new Elysia({ name: "timeforschool" })
         tags: ["Timetable"],
         summary: "Weekly class timetable",
         description:
-          "Fetches the class schedule from Comcigan. Provide schoolname, or schoolcode alone (name is resolved via NEIS). week: 0 = this week, 1 = next week.",
+          "Fetches the class schedule from Comcigan. Provide schoolname, or schoolcode alone (name is resolved via NEIS). week: 0 = this week, 1 = next week. Most periods have `replaced: false` and `original: null`; when a period was substituted, `replaced` is true and `original` is the class before the change.",
       },
       response: {
-        200: t.Object({
-          day_time: t.Array(t.String()),
-          timetable: t.Array(t.Array(t.Any())),
-          update_date: t.String(),
-        }),
+        200: TimetableResponseSchema,
         400: ApiErrorSchema,
         404: ApiErrorSchema,
         409: ApiErrorSchema,
@@ -287,12 +295,14 @@ export const app = new Elysia({ name: "timeforschool" })
           });
         }
 
-        return meals.map((item) => ({
-          ...item,
-          DDISH_NM: item.DDISH_NM.replace(REMOVE_PAREN_PATTERN, "")
-            .replaceAll(" <br/>", "\n")
-            .replaceAll("<br/>", "\n"),
-        }));
+        return omitNullsFromRows(
+          meals.map((item) => ({
+            ...item,
+            DDISH_NM: item.DDISH_NM.replace(REMOVE_PAREN_PATTERN, "")
+              .replaceAll(" <br/>", "\n")
+              .replaceAll("<br/>", "\n"),
+          })),
+        ) as Static<typeof MealListSchema>;
       }),
     {
       query: t.Object({
@@ -308,7 +318,7 @@ export const app = new Elysia({ name: "timeforschool" })
           "Returns NEIS mealServiceDietInfo rows. Parentheses are stripped from dish names; HTML line breaks become newlines.",
       },
       response: {
-        200: t.Any(),
+        200: MealListSchema,
         400: ApiErrorSchema,
         404: ApiErrorSchema,
         502: ApiErrorSchema,
@@ -340,7 +350,7 @@ export const app = new Elysia({ name: "timeforschool" })
           });
         }
 
-        return rows;
+        return omitNullsFromRows(rows) as Static<typeof ScheduleListSchema>;
       }),
     {
       query: t.Object({
@@ -355,7 +365,7 @@ export const app = new Elysia({ name: "timeforschool" })
         description: "Returns NEIS SchoolSchedule rows between startdate and enddate (inclusive).",
       },
       response: {
-        200: t.Any(),
+        200: ScheduleListSchema,
         400: ApiErrorSchema,
         404: ApiErrorSchema,
         502: ApiErrorSchema,

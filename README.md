@@ -4,7 +4,7 @@ TypeScript API for NEIS school data (school info, classes, lunch, schedule) and 
 
 Production: https://api.timefor.school
 
-Built with [Elysia](https://elysiajs.com).
+Built with [Elysia](https://elysiajs.com). Interactive reference UI is [Scalar](https://scalar.com) (via [`@elysiajs/openapi`](https://elysiajs.com/plugins/openapi)).
 
 ## Monorepo
 
@@ -21,13 +21,21 @@ import { NeisClient, fetchTimeTable } from "@timeforschool/client";
 
 See [packages/client/README.md](packages/client/README.md).
 
-## Documentation
+## API documentation
+
+OpenAPI is generated from Elysia route definitions in `src/app.ts` (`query` / `response` schemas, `detail` metadata). [`@elysiajs/openapi`](https://elysiajs.com/plugins/openapi) exposes the spec and a browser UI.
+
+The default UI **provider is Scalar** (`provider: 'swagger-ui'` is available if you need the legacy UI).
 
 | Resource | URL |
 |----------|-----|
-| Interactive docs (Swagger UI) | `/docs` |
-| OpenAPI JSON | `/docs/json` |
-| API info | `GET /` |
+| Scalar API Reference | `/docs` |
+| OpenAPI 3 JSON | `/docs/json` |
+| Service metadata | `GET /` |
+
+Production docs: https://api.timefor.school/docs
+
+Tags in the sidebar (Meta, School, Classes, …) come from `documentation.tags` and each route’s `detail.tags`. Customize the Scalar shell (theme, layout, `servers`, etc.) with the plugin’s `scalar` option — see [Scalar API Reference configuration](https://scalar.com/products/api-references/configuration).
 
 ## Setup
 
@@ -48,7 +56,11 @@ Copy `.env.example` to `.env.local` for local overrides.
 npm run dev
 ```
 
-Open http://localhost:8000/docs for the interactive API reference.
+- App: http://localhost:8000  
+- Scalar docs: http://localhost:8000/docs  
+- OpenAPI JSON: http://localhost:8000/docs/json  
+
+Preview with the Vercel dev server (same zero-config Elysia detection as production):
 
 ```bash
 npx vercel dev
@@ -101,16 +113,16 @@ Errors use a consistent JSON shape and HTTP status code:
 
 - `npm run build` — build `@timeforschool/client`, then compile API to `dist/`
 - `npm run build:client` — build client package only
-- `npm start` — run compiled server
+- `npm start` — run compiled server (`node dist/server.js`)
 - `npm test` — structural smoke tests
 
 ## Deploy to Vercel
 
-Vercel detects Elysia when `src/app.ts` default-exports the app.
+Follow [Deploy Elysia on Vercel](https://elysiajs.com/integrations/vercel):
 
-1. Import the repo in [Vercel](https://vercel.com/new).
-2. Set `NEIS_API_KEY` for Production.
-3. Deploy.
+1. **Default-export** the Elysia instance from `src/app.ts` (already `export default app`).
+2. Import the repo in [Vercel](https://vercel.com/new) and deploy — no `api/` folder or framework block in `vercel.json` is required for detection.
+3. Set `NEIS_API_KEY` for Production.
 
 ```bash
 npx vercel link
@@ -118,4 +130,6 @@ npx vercel env add NEIS_API_KEY
 npx vercel deploy --prod
 ```
 
-Elysia is detected from `src/app.ts` (default export). No `api/` routes required.
+This project uses **Node** with `"type": "module"` in `package.json`. To deploy on the **Bun** runtime instead, add `"bunVersion": "1.x"` to `vercel.json` per the Elysia guide.
+
+Local entry for `npm run dev` is `src/server.ts`, which calls `app.listen()`. Vercel only needs the default export from `src/app.ts`.
