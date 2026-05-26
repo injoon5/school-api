@@ -1,23 +1,31 @@
 import { app } from "../app.js";
-import { assert, isAnyErrorBody, isErrorBody, requestJson } from "./helpers.js";
+import {
+  assert,
+  assertApiMeta,
+  assertClassList,
+  assertMealList,
+  assertScheduleList,
+  assertSchoolList,
+  assertStructuredError,
+  assertTimetableResponse,
+  isErrorBody,
+  requestJson,
+} from "./helpers.js";
 
 async function main() {
   const root = await requestJson(app, "/");
   assert(root.status === 200, `GET / expected 200, got ${root.status}`);
-  const meta = root.body as { name?: string; docs?: string };
-  assert(meta.name === "SchoolKit" && meta.docs === "/docs", "GET / body mismatch");
+  assertApiMeta(root.body);
   console.log("✓ GET /");
 
   const school = await requestJson(app, "/school?schoolname=목운중학교");
   assert(school.status === 200, `GET /school expected 200`);
-  assert(Array.isArray(school.body), "/school should return array");
-  assert((school.body as unknown[]).length > 0, "/school empty");
+  assertSchoolList(school.body);
   console.log("✓ GET /school");
 
   const classes = await requestJson(app, "/classes?grade=1&schoolname=목운중학교");
   assert(classes.status === 200, `GET /classes expected 200`);
-  assert(Array.isArray(classes.body), "/classes should return array");
-  assert((classes.body as string[]).includes("1"), "/classes missing class 1");
+  assertClassList(classes.body);
   console.log("✓ GET /classes");
 
   const lunch = await requestJson(
@@ -25,7 +33,8 @@ async function main() {
     "/lunch?startdate=20250526&enddate=20250526&schoolname=목운중학교",
   );
   assert(lunch.status === 200, `GET /lunch expected 200`);
-  assert(Array.isArray(lunch.body), "/lunch should return array");
+  assert(!isErrorBody(lunch.body), `/lunch error: ${JSON.stringify(lunch.body)}`);
+  assertMealList(lunch.body);
   console.log("✓ GET /lunch");
 
   const timetable = await requestJson(
@@ -33,27 +42,20 @@ async function main() {
     "/timetable?grade=1&classno=1&week=0&schoolname=목운중학교",
   );
   assert(timetable.status === 200, `GET /timetable expected 200`);
-  const tt = timetable.body as {
-    day_time?: string[];
-    timetable?: unknown[];
-  };
   assert(!isErrorBody(timetable.body), `/timetable error: ${JSON.stringify(timetable.body)}`);
-  assert(Array.isArray(tt.day_time) && tt.day_time.length > 0, "day_time missing");
-  assert(Array.isArray(tt.timetable) && tt.timetable.length > 0, "timetable empty");
+  assertTimetableResponse(timetable.body);
   console.log("✓ GET /timetable");
 
   const schedule = await requestJson(
     app,
     "/schedule?startdate=20250301&enddate=20250331&schoolname=목운중학교",
   );
-  assert(schedule.status === 200, `GET /schedule expected 200`);
-  if (isAnyErrorBody(schedule.body)) {
-    console.log(
-      "⚠ GET /schedule returned error (no NEIS data for range):",
-      schedule.body,
-    );
+  if (schedule.status === 404 && isErrorBody(schedule.body)) {
+    assertStructuredError(schedule.body, "NEIS_DATA_NOT_FOUND");
+    console.log("✓ GET /schedule (no data for range)");
   } else {
-    assert(Array.isArray(schedule.body), "/schedule should return array");
+    assert(schedule.status === 200, `GET /schedule expected 200 or 404`);
+    assertScheduleList(schedule.body);
     console.log("✓ GET /schedule");
   }
 
@@ -62,14 +64,10 @@ async function main() {
     "/lunch?startdate=20250526&enddate=20250526&schoolname=목운중학교&schoolcode=7081492",
   );
   assert(conflict.status === 400, "expected 400 for conflict");
-  assert(isErrorBody(conflict.body), "expected conflict error");
-  assert(
-    conflict.body.error.code === "CONFLICTING_SCHOOL_PARAMS",
-    "unexpected conflict code",
-  );
+  assertStructuredError(conflict.body, "CONFLICTING_SCHOOL_PARAMS");
   console.log("✓ validation: schoolname + schoolcode");
 
-  console.log("\nAll checks passed.");
+  console.log("\nAll structural checks passed.");
 }
 
 main().catch((err) => {

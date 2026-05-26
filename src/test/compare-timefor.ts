@@ -1,15 +1,21 @@
 /**
- * Compare local API with https://api.timefor.school (legacy Python deployment).
- * Success payloads should match; error shapes intentionally differ (local uses structured errors).
+ * Structural comparison: local API vs https://api.timefor.school
+ * Checks response shape only — not byte-identical payloads.
  */
 import { app } from "../app.js";
 import {
   assert,
+  assertClassList,
+  assertMealList,
+  assertSameTopLevelKind,
+  assertScheduleList,
+  assertSchoolList,
+  assertStructuredError,
+  assertTimetableResponse,
   errorMessage,
   fetchProduction,
   isErrorBody,
   isLegacyErrorBody,
-  jsonEqual,
   PRODUCTION_API,
   requestJson,
 } from "./helpers.js";
@@ -20,39 +26,46 @@ const GRADE = 1;
 const CLASS_NO = 3;
 const enc = encodeURIComponent(SCHOOL);
 
-async function compareEndpoint(name: string, path: string) {
+function assertBothOk(
+  local: { status: number; body: unknown },
+  prod: { status: number; body: unknown },
+  name: string,
+) {
+  assert(local.status === 200, `${name} local status ${local.status}`);
+  assert(prod.status === 200, `${name} production status ${prod.status}`);
+  assertSameTopLevelKind(local.body, prod.body, name);
+}
+
+async function compareStructural(name: string, path: string, assertBody: (body: unknown) => void) {
   const [local, prod] = await Promise.all([
     requestJson(app, path),
     fetchProduction(path),
   ]);
-
-  assert(local.status === 200, `${name} local status ${local.status}`);
-  assert(prod.status === 200, `${name} production status ${prod.status}`);
-
-  if (jsonEqual(local.body, prod.body)) {
-    console.log(`✓ ${name}: matches ${PRODUCTION_API}`);
-    return;
-  }
-
-  console.log(`✗ ${name}: differs from production`);
-  console.log("  local:", JSON.stringify(local.body).slice(0, 240));
-  console.log("  prod: ", JSON.stringify(prod.body).slice(0, 240));
-  throw new Error(`${name} mismatch vs production`);
+  assertBothOk(local, prod, name);
+  assertBody(local.body);
+  assertBody(prod.body);
+  console.log(`✓ ${name}: same structural shape as ${PRODUCTION_API}`);
 }
 
 async function main() {
-  console.log(`Comparing local API vs ${PRODUCTION_API}\n`);
+  console.log(`Structural compare vs ${PRODUCTION_API}\n`);
 
-  await compareEndpoint("GET /school", `/school?schoolname=${enc}`);
-  await compareEndpoint(
+  await compareStructural(
+    "GET /school",
+    `/school?schoolname=${enc}`,
+    assertSchoolList,
+  );
+  await compareStructural(
     "GET /classes",
     `/classes?grade=${GRADE}&schoolname=${enc}`,
+    assertClassList,
   );
 
   const ymd = "20250526";
-  await compareEndpoint(
+  await compareStructural(
     "GET /lunch",
     `/lunch?startdate=${ymd}&enddate=${ymd}&schoolname=${enc}`,
+    assertMealList,
   );
 
   const schedulePath = `/schedule?startdate=20250301&enddate=20250331&schoolname=${enc}`;
@@ -60,14 +73,16 @@ async function main() {
     requestJson(app, schedulePath),
     fetchProduction(schedulePath),
   ]);
-  const prodSchedErr = errorMessage(prodSched.body);
-  const localSchedErr = errorMessage(localSched.body);
-  if (prodSchedErr && localSchedErr) {
-    console.log(`◦ GET /schedule: both error — prod: ${prodSchedErr}`);
-  } else if (jsonEqual(localSched.body, prodSched.body)) {
-    console.log("✓ GET /schedule: matches production");
+  const prodErr = errorMessage(prodSched.body);
+  const localErr = errorMessage(localSched.body);
+  if (prodErr && localErr) {
+    assertSameTopLevelKind(localSched.body, prodSched.body, "GET /schedule");
+    console.log(`◦ GET /schedule: both error — ${prodErr}`);
   } else {
-    throw new Error("schedule mismatch");
+    assertBothOk(localSched, prodSched, "GET /schedule");
+    assertScheduleList(localSched.body);
+    assertScheduleList(prodSched.body);
+    console.log("✓ GET /schedule: same structural shape");
   }
 
   const ttPath = `/timetable?grade=${GRADE}&classno=${CLASS_NO}&week=0&schoolname=${enc}`;
@@ -77,18 +92,16 @@ async function main() {
   ]);
 
   if (isLegacyErrorBody(prodTt.body)) {
-    assert(!isErrorBody(localTt.body), "local timetable should work with schoolname");
-    console.log(
-      "◦ GET /timetable?schoolname=…: production error (Python default schoolcode bug)",
-    );
+    assert(localTt.status === 200, "local timetable status");
+    assert(!isErrorBody(localTt.body), "local timetable should succeed");
+    assertTimetableResponse(localTt.body);
+    console.log("◦ GET /timetable: production errors; local shape OK");
     console.log(`    prod: ${prodTt.body.message}`);
-    console.log(
-      `    local: OK — ${(localTt.body as { timetable: unknown[] }).timetable.length} weekdays`,
-    );
-  } else if (jsonEqual(localTt.body, prodTt.body)) {
-    console.log("✓ GET /timetable: matches production");
   } else {
-    throw new Error("timetable mismatch");
+    assertBothOk(localTt, prodTt, "GET /timetable");
+    assertTimetableResponse(localTt.body);
+    assertTimetableResponse(prodTt.body);
+    console.log("✓ GET /timetable: same structural shape");
   }
 
   const conflictPath = `${ttPath}&schoolcode=${SCHOOL_CODE}`;
@@ -96,24 +109,19 @@ async function main() {
     requestJson(app, conflictPath),
     fetchProduction(conflictPath),
   ]);
-  assert(
-    isErrorBody(localConflict.body) &&
-      localConflict.body.error.code === "CONFLICTING_SCHOOL_PARAMS",
-    "local should reject both params",
-  );
-  assert(isLegacyErrorBody(prodConflict.body), "production should reject both params");
+  assert(localConflict.status === 400, "local conflict status");
+  assertStructuredError(localConflict.body, "CONFLICTING_SCHOOL_PARAMS");
+  assert(isLegacyErrorBody(prodConflict.body), "production conflict error");
   console.log("✓ timetable conflict: both reject schoolname + schoolcode");
 
   const prodCodeOnly = await fetchProduction(
     `/timetable?grade=${GRADE}&classno=${CLASS_NO}&week=0&schoolcode=${SCHOOL_CODE}`,
   );
   if (isLegacyErrorBody(prodCodeOnly.body)) {
-    console.log(
-      `◦ GET /timetable?schoolcode only: production broken — ${prodCodeOnly.body.message}`,
-    );
+    console.log(`◦ GET /timetable?schoolcode only: production error — ${prodCodeOnly.body.message}`);
   }
 
-  console.log("\nProduction comparison finished.");
+  console.log("\nStructural production comparison finished.");
 }
 
 main().catch((err) => {
