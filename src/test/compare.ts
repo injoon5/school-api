@@ -23,6 +23,11 @@ async function main() {
   assertSchoolList(school.body);
   console.log("✓ GET /school");
 
+  const schoolMissing = await requestJson(app, "/school");
+  assert(schoolMissing.status === 400, "expected 400 when schoolname omitted");
+  assertStructuredError(schoolMissing.body, "MISSING_SCHOOL_IDENTIFIER");
+  console.log("✓ validation: schoolname required on /school");
+
   const classes = await requestJson(app, "/classes?grade=1&schoolname=목운중학교");
   assert(classes.status === 200, `GET /classes expected 200`);
   assertClassList(classes.body);

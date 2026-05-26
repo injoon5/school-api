@@ -104,9 +104,11 @@ export const app = new Elysia({ name: "timeforschool" })
     "/school",
     ({ query }) =>
       handleRoute(async () => {
-        const schoolname = query.schoolname ?? "양정고등학교";
+        requireSchoolParam({ schoolname: query.schoolname });
         const client = new NeisClient({ key: NEIS_API_KEY });
-        const schools = await client.schoolInfo({ SCHUL_NM: schoolname });
+        const schools = await client.schoolInfo({
+          SCHUL_NM: query.schoolname!,
+        });
         return omitNullsFromRows(schools) as Static<typeof SchoolInfoListSchema>;
       }),
     {
@@ -117,10 +119,11 @@ export const app = new Elysia({ name: "timeforschool" })
         tags: ["School"],
         summary: "Search schools by name",
         description:
-          "Returns all NEIS school records matching the name. Defaults to 양정고등학교 (서울) when schoolname is omitted.",
+          "Returns all NEIS school records matching the name. Requires schoolname.",
       },
       response: {
         200: "SchoolInfoList",
+        400: "ApiError",
         404: "ApiError",
         502: "ApiError",
       },
