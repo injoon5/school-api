@@ -193,3 +193,5 @@ export const app = new Elysia({ name: "schoolkit" })
       return errorResponse(message);
     }
   });
+
+export default app;

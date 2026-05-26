@@ -1,5 +1,3 @@
-import type { Elysia } from "elysia";
-
 export const PRODUCTION_API =
   process.env.PRODUCTION_API ?? "https://api.timefor.school";
 
@@ -7,8 +5,12 @@ export function assert(condition: boolean, message: string): asserts condition {
   if (!condition) throw new Error(message);
 }
 
+type FetchableApp = {
+  handle: (request: Request) => Response | Promise<Response>;
+};
+
 export async function requestJson(
-  app: Elysia,
+  app: FetchableApp,
   path: string,
 ): Promise<{ status: number; body: unknown }> {
   const response = await app.handle(new Request(`http://127.0.0.1${path}`));

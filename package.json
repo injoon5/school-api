@@ -8,7 +8,9 @@
     "start": "node dist/server.js",
     "build": "tsc",
     "test": "tsx src/test/compare.ts && tsx src/test/yangjeong-1-3.ts && tsx src/test/compare-timefor.ts",
-    "test:production": "tsx src/test/compare-timefor.ts"
+    "test:production": "tsx src/test/compare-timefor.ts",
+    "vercel:dev": "vercel dev",
+    "vercel:deploy": "vercel deploy --prod"
   },
   "dependencies": {
     "@elysiajs/cors": "^1.3.0",
