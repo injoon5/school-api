@@ -1,5 +1,6 @@
 import { cors } from "@elysiajs/cors";
 import { openapi } from "@elysiajs/openapi";
+import { openApiPluginConfig } from "./openapi-config.js";
 import {
   fetchTimeTable,
   NeisClient,
@@ -13,8 +14,8 @@ import {
   ClassNo,
   DateYmd,
   Grade,
-  SchoolCode,
   SchoolName,
+  SchoolQuery,
   Week,
 } from "./schemas/common.js";
 import {
@@ -34,18 +35,7 @@ import { omitNullsFromRows } from "./utils/json.js";
 
 const REMOVE_PAREN_PATTERN = /\([^)]*\)/g;
 
-const API_DESCRIPTION = `
-TimeForSchool wraps the Korean **NEIS Open API** (school info, classes, meals, calendar) and **Comcigan** (weekly class timetables).
-
-### School identifier
-Use **either** \`schoolname\` **or** \`schoolcode\` (NEIS 7-digit code)—never both.
-
-### Dates
-\`startdate\` / \`enddate\` use **YYYYMMDD** (e.g. \`20250526\`).
-
-### Errors
-Failed requests return \`{ ok: false, error: { code, message, details? } }\` with an appropriate HTTP status.
-`.trim();
+const ClassListSchema = t.Array(t.String({ examples: ["1", "2", "3"] }));
 
 function handleRoute<T>(fn: () => Promise<T>): Promise<T> {
   return fn().catch((error) => {
@@ -60,26 +50,16 @@ export const app = new Elysia({ name: "timeforschool" })
       credentials: true,
     }),
   )
-  .use(
-    openapi({
-      path: "/docs",
-      documentation: {
-        info: {
-          title: "TimeForSchool API",
-          version: "0.0.1",
-          description: API_DESCRIPTION,
-        },
-        tags: [
-          { name: "Meta", description: "Service metadata" },
-          { name: "School", description: "NEIS school profile" },
-          { name: "Classes", description: "Class numbers by grade" },
-          { name: "Timetable", description: "Weekly timetable (Comcigan)" },
-          { name: "Lunch", description: "Meal menus (NEIS)" },
-          { name: "Schedule", description: "School calendar (NEIS)" },
-        ],
-      },
-    }),
-  )
+  .use(openapi(openApiPluginConfig))
+  .model({
+    ApiMeta: ApiMetaSchema,
+    ApiError: ApiErrorSchema,
+    SchoolInfoList: SchoolInfoListSchema,
+    ClassList: ClassListSchema,
+    TimetableResponse: TimetableResponseSchema,
+    MealList: MealListSchema,
+    ScheduleList: ScheduleListSchema,
+  })
   .onError(({ error, set, code }) => {
     if (code === "VALIDATION") {
       const apiError = ApiError.validation(
@@ -116,7 +96,7 @@ export const app = new Elysia({ name: "timeforschool" })
         description: "Service name, version, and links to interactive documentation.",
       },
       response: {
-        200: ApiMetaSchema,
+        200: "ApiMeta",
       },
     },
   )
@@ -140,9 +120,9 @@ export const app = new Elysia({ name: "timeforschool" })
           "Returns all NEIS school records matching the name. Defaults to 목운중학교 when schoolname is omitted.",
       },
       response: {
-        200: SchoolInfoListSchema,
-        404: ApiErrorSchema,
-        502: ApiErrorSchema,
+        200: "SchoolInfoList",
+        404: "ApiError",
+        502: "ApiError",
       },
     },
   )
@@ -171,11 +151,12 @@ export const app = new Elysia({ name: "timeforschool" })
         );
       }),
     {
-      query: t.Object({
-        schoolname: t.Optional(SchoolName),
-        schoolcode: t.Optional(SchoolCode),
-        grade: Grade,
-      }),
+      query: t.Composite([
+        SchoolQuery,
+        t.Object({
+          grade: Grade,
+        }),
+      ]),
       detail: {
         tags: ["Classes"],
         summary: "List class numbers for a grade",
@@ -183,10 +164,10 @@ export const app = new Elysia({ name: "timeforschool" })
           "Returns sorted class names (반) for the given school and grade using NEIS classInfo.",
       },
       response: {
-        200: t.Array(t.String()),
-        400: ApiErrorSchema,
-        404: ApiErrorSchema,
-        502: ApiErrorSchema,
+        200: "ClassList",
+        400: "ApiError",
+        404: "ApiError",
+        502: "ApiError",
       },
     },
   )
@@ -248,13 +229,14 @@ export const app = new Elysia({ name: "timeforschool" })
         } as Static<typeof TimetableResponseSchema>;
       }),
     {
-      query: t.Object({
-        grade: Grade,
-        classno: ClassNo,
-        week: Week,
-        schoolname: t.Optional(SchoolName),
-        schoolcode: t.Optional(SchoolCode),
-      }),
+      query: t.Composite([
+        SchoolQuery,
+        t.Object({
+          grade: Grade,
+          classno: ClassNo,
+          week: Week,
+        }),
+      ]),
       detail: {
         tags: ["Timetable"],
         summary: "Weekly class timetable",
@@ -262,11 +244,11 @@ export const app = new Elysia({ name: "timeforschool" })
           "Fetches the class schedule from Comcigan. Provide schoolname, or schoolcode alone (name is resolved via NEIS). week: 0 = this week, 1 = next week. Most periods have `replaced: false` and `original: null`; when a period was substituted, `replaced` is true and `original` is the class before the change.",
       },
       response: {
-        200: TimetableResponseSchema,
-        400: ApiErrorSchema,
-        404: ApiErrorSchema,
-        409: ApiErrorSchema,
-        502: ApiErrorSchema,
+        200: "TimetableResponse",
+        400: "ApiError",
+        404: "ApiError",
+        409: "ApiError",
+        502: "ApiError",
       },
     },
   )
@@ -305,12 +287,13 @@ export const app = new Elysia({ name: "timeforschool" })
         ) as Static<typeof MealListSchema>;
       }),
     {
-      query: t.Object({
-        schoolname: t.Optional(SchoolName),
-        schoolcode: t.Optional(SchoolCode),
-        startdate: DateYmd,
-        enddate: DateYmd,
-      }),
+      query: t.Composite([
+        SchoolQuery,
+        t.Object({
+          startdate: DateYmd,
+          enddate: DateYmd,
+        }),
+      ]),
       detail: {
         tags: ["Lunch"],
         summary: "Meal menus for a date range",
@@ -318,10 +301,10 @@ export const app = new Elysia({ name: "timeforschool" })
           "Returns NEIS mealServiceDietInfo rows. Parentheses are stripped from dish names; HTML line breaks become newlines.",
       },
       response: {
-        200: MealListSchema,
-        400: ApiErrorSchema,
-        404: ApiErrorSchema,
-        502: ApiErrorSchema,
+        200: "MealList",
+        400: "ApiError",
+        404: "ApiError",
+        502: "ApiError",
       },
     },
   )
@@ -353,22 +336,23 @@ export const app = new Elysia({ name: "timeforschool" })
         return omitNullsFromRows(rows) as Static<typeof ScheduleListSchema>;
       }),
     {
-      query: t.Object({
-        schoolname: t.Optional(SchoolName),
-        schoolcode: t.Optional(SchoolCode),
-        startdate: DateYmd,
-        enddate: DateYmd,
-      }),
+      query: t.Composite([
+        SchoolQuery,
+        t.Object({
+          startdate: DateYmd,
+          enddate: DateYmd,
+        }),
+      ]),
       detail: {
         tags: ["Schedule"],
         summary: "School calendar events",
         description: "Returns NEIS SchoolSchedule rows between startdate and enddate (inclusive).",
       },
       response: {
-        200: ScheduleListSchema,
-        400: ApiErrorSchema,
-        404: ApiErrorSchema,
-        502: ApiErrorSchema,
+        200: "ScheduleList",
+        400: "ApiError",
+        404: "ApiError",
+        502: "ApiError",
       },
     },
   );
