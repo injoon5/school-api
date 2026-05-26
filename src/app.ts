@@ -150,10 +150,10 @@ export const app = new Elysia({ name: "schoolkit" })
 
       return meals.map((item) => ({
         ...item,
-        DDISH_NM: item.DDISH_NM.replace(REMOVE_PAREN_PATTERN, "").replace(
-          " <br/>",
-          "\n",
-        ),
+        DDISH_NM: item.DDISH_NM
+          .replace(REMOVE_PAREN_PATTERN, "")
+          .replaceAll(" <br/>", "\n")
+          .replaceAll("<br/>", "\n"),
       }));
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
