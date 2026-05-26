@@ -118,4 +118,4 @@ npx vercel env add NEIS_API_KEY
 npx vercel deploy --prod
 ```
 
-`vercel.json` sets `maxDuration: 30` for upstream API calls.
+Elysia is detected from `src/app.ts` (default export). No `api/` routes required.
