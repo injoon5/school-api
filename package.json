@@ -16,7 +16,6 @@
     "vercel:deploy": "vercel deploy --prod"
   },
   "dependencies": {
-    "@elysiajs/cors": "^1.3.0",
     "@elysiajs/openapi": "^1.4.15",
     "@timeforschool/client": "workspace:*",
     "elysia": "^1.4.28"

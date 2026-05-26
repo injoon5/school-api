@@ -1,7 +1,5 @@
-import { cors } from "@elysiajs/cors";
 import { openapi } from "@elysiajs/openapi";
 import { Elysia } from "elysia";
-import { CORS_ORIGINS } from "./config.js";
 import { ApiError } from "./errors/api-error.js";
 import { classesModule } from "./modules/classes/index.js";
 import { lunchModule } from "./modules/lunch/index.js";
@@ -34,12 +32,6 @@ export const app = new Elysia({ name: "timeforschool" })
     set.status = apiError.httpStatus;
     return apiError.toJSON();
   })
-  .use(
-    cors({
-      origin: CORS_ORIGINS,
-      credentials: true,
-    }),
-  )
   .use(openapi(openApiPluginConfig))
   .use(modelsPlugin)
   .use(metaModule)
