@@ -175,6 +175,7 @@ CI also enforces this on PRs (see `.github/workflows/sync-docs.yml`). Agents sho
 | Symptom | Fix |
 | ------- | --- |
 | Docs build: cannot find `fumadocs-*` | Use `installCommand` in `apps/docs/vercel.json`; enable outside-root inclusion. |
+| Docs build: `ERR_MODULE_NOT_FOUND` for `scripts/export-openapi.ts` | Do not list `scripts` in root `.vercelignore`—the docs `openapi:sync` step needs that file (and `src/` for the Elysia app export). |
 | Docs build: missing `openapi.json` | Ensure `openapi:sync` runs in `buildCommand`; commit synced files or rely on build-time generation. |
 | API 502 on NEIS | Check `NEIS_API_KEY` in Vercel env. |
 | Wrong OpenAPI on docs site | Re-run `npm run openapi:sync` locally; confirm API project deployed same commit. |

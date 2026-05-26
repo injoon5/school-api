@@ -1,7 +1,6 @@
 .idea
 .vscode
 timetable.json
-scripts
 src/test
 test_main.http
 __pycache__
