@@ -1,3 +1,4 @@
+import { cors } from "@elysiajs/cors";
 import { openapi } from "@elysiajs/openapi";
 import { Elysia } from "elysia";
 import { ApiError } from "./errors/api-error.js";
@@ -32,6 +33,7 @@ export const app = new Elysia({ name: "timeforschool" })
     set.status = apiError.httpStatus;
     return apiError.toJSON();
   })
+  .use(cors({ origin: true }))
   .use(openapi(openApiPluginConfig))
   .use(modelsPlugin)
   .use(metaModule)
