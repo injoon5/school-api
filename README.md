@@ -4,6 +4,21 @@ TypeScript API for NEIS school data (school info, classes, lunch, schedule) and 
 
 Built with [Elysia](https://elysiajs.com).
 
+## Monorepo
+
+| Package | Path | Description |
+|---------|------|-------------|
+| `schoolkit-api` | repo root | HTTP API (`src/`) |
+| `@schoolkit/client` | `packages/client/` | NEIS + Comcigan client library |
+
+Use the client standalone:
+
+```ts
+import { NeisClient, fetchTimeTable } from "@schoolkit/client";
+```
+
+See [packages/client/README.md](packages/client/README.md).
+
 ## Documentation
 
 | Resource | URL |
@@ -82,7 +97,8 @@ Errors use a consistent JSON shape and HTTP status code:
 
 ## Scripts
 
-- `npm run build` — compile to `dist/`
+- `npm run build` — build `@schoolkit/client`, then compile API to `dist/`
+- `npm run build:client` — build client package only
 - `npm start` — run compiled server
 - `npm test` — smoke tests + comparison with api.timefor.school
 

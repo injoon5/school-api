@@ -1,9 +1,13 @@
 import { cors } from "@elysiajs/cors";
 import { swagger } from "@elysiajs/swagger";
+import {
+  fetchTimeTable,
+  NeisClient,
+  Neispy,
+} from "@schoolkit/client";
 import { Elysia, t } from "elysia";
 import { CORS_ORIGINS, NEIS_API_KEY } from "./config.js";
 import { ApiError, ErrorCode } from "./errors/api-error.js";
-import { Neispy } from "./neispy/client.js";
 import {
   ApiErrorSchema,
   ClassNo,
@@ -19,7 +23,6 @@ import {
   requireSchoolParam,
   resolveSchool,
 } from "./services/school.js";
-import { fetchTimeTable } from "./timetable/index.js";
 
 const REMOVE_PAREN_PATTERN = /\([^)]*\)/g;
 
@@ -111,7 +114,7 @@ export const app = new Elysia({ name: "schoolkit" })
     ({ query }) =>
       handleRoute(async () => {
         const schoolname = query.schoolname ?? "목운중학교";
-        const client = new Neispy({ key: NEIS_API_KEY });
+        const client = new NeisClient({ key: NEIS_API_KEY });
         return client.schoolInfo({ SCHUL_NM: schoolname });
       }),
     {

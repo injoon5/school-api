@@ -1,21 +1,24 @@
 import { raiseForNeisResult } from "./errors.js";
 import type {
+  ClassInfoParams,
   ClassInfoRow,
+  MealServiceDietInfoParams,
   MealServiceDietInfoRow,
   NeisApiResponse,
+  SchoolInfoParams,
   SchoolInfoRow,
+  SchoolScheduleParams,
   SchoolScheduleRow,
 } from "./types.js";
 
 const NEIS_BASE = "https://open.neis.go.kr/hub";
 
-export interface NeispyOptions {
+export interface NeisClientOptions {
+  /** NEIS Open API key. Uses the public sample key when omitted. */
   key?: string;
   pIndex?: number;
   pSize?: number;
 }
-
-type QueryParams = Record<string, string | number | undefined>;
 
 function extractRows<T>(data: NeisApiResponse<T>, key: string): T[] {
   const section = data[key]?.[1]?.row;
@@ -23,12 +26,15 @@ function extractRows<T>(data: NeisApiResponse<T>, key: string): T[] {
   return section;
 }
 
-export class Neispy {
+/**
+ * Async client for the NEIS Open API (school info, classes, meals, calendar).
+ */
+export class NeisClient {
   private readonly key?: string;
   private readonly pIndex: number;
   private readonly pSize: number;
 
-  constructor(options: NeispyOptions = {}) {
+  constructor(options: NeisClientOptions = {}) {
     this.key = options.key;
     this.pIndex = options.pIndex ?? 1;
     this.pSize = options.pSize ?? 100;
@@ -36,7 +42,7 @@ export class Neispy {
 
   private async request<T>(
     endpoint: string,
-    params: QueryParams,
+    params: object,
   ): Promise<NeisApiResponse<T>> {
     const search = new URLSearchParams({
       pIndex: String(this.pIndex),
@@ -53,6 +59,11 @@ export class Neispy {
 
     const url = `${NEIS_BASE}${endpoint}?${search}`;
     const response = await fetch(url);
+
+    if (!response.ok) {
+      throw new Error(`NEIS HTTP ${response.status}: ${response.statusText}`);
+    }
+
     const data = (await response.json()) as NeisApiResponse<T> & {
       RESULT?: { CODE: string; MESSAGE: string };
     };
@@ -67,52 +78,36 @@ export class Neispy {
     return data;
   }
 
-  async schoolInfo(
-    params: {
-      SCHUL_NM?: string;
-      SD_SCHUL_CODE?: string;
-      ATPT_OFCDC_SC_CODE?: string;
-    } = {},
-  ): Promise<SchoolInfoRow[]> {
-    const data = await this.request<SchoolInfoRow>("/schoolInfo", params);
-    return extractRows(data, "schoolInfo");
+  schoolInfo(params: SchoolInfoParams = {}): Promise<SchoolInfoRow[]> {
+    return this.request<SchoolInfoRow>("/schoolInfo", params).then((data) =>
+      extractRows(data, "schoolInfo"),
+    );
   }
 
-  async classInfo(params: {
-    ATPT_OFCDC_SC_CODE: string;
-    SD_SCHUL_CODE: string;
-    AY?: string;
-    GRADE?: string;
-  }): Promise<ClassInfoRow[]> {
-    const data = await this.request<ClassInfoRow>("/classInfo", params);
-    return extractRows(data, "classInfo");
+  classInfo(params: ClassInfoParams): Promise<ClassInfoRow[]> {
+    return this.request<ClassInfoRow>("/classInfo", params).then((data) =>
+      extractRows(data, "classInfo"),
+    );
   }
 
-  async mealServiceDietInfo(params: {
-    ATPT_OFCDC_SC_CODE: string;
-    SD_SCHUL_CODE: string;
-    MLSV_FROM_YMD?: string;
-    MLSV_TO_YMD?: string;
-    MLSV_YMD?: string;
-  }): Promise<MealServiceDietInfoRow[]> {
-    const data = await this.request<MealServiceDietInfoRow>(
+  mealServiceDietInfo(
+    params: MealServiceDietInfoParams,
+  ): Promise<MealServiceDietInfoRow[]> {
+    return this.request<MealServiceDietInfoRow>(
       "/mealServiceDietInfo",
       params,
-    );
-    return extractRows(data, "mealServiceDietInfo");
+    ).then((data) => extractRows(data, "mealServiceDietInfo"));
   }
 
-  async schoolSchedule(params: {
-    ATPT_OFCDC_SC_CODE: string;
-    SD_SCHUL_CODE: string;
-    AA_FROM_YMD?: string;
-    AA_TO_YMD?: string;
-    AA_YMD?: string;
-  }): Promise<SchoolScheduleRow[]> {
-    const data = await this.request<SchoolScheduleRow>(
-      "/SchoolSchedule",
-      params,
+  schoolSchedule(params: SchoolScheduleParams): Promise<SchoolScheduleRow[]> {
+    return this.request<SchoolScheduleRow>("/SchoolSchedule", params).then(
+      (data) => extractRows(data, "SchoolSchedule"),
     );
-    return extractRows(data, "SchoolSchedule");
   }
 }
+
+/** @deprecated Use {@link NeisClient} */
+export const Neispy = NeisClient;
+
+/** @deprecated Use {@link NeisClientOptions} */
+export type NeispyOptions = NeisClientOptions;

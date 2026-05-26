@@ -1,0 +1,30 @@
+export {
+  NeisClient,
+  Neispy,
+  NeisDataNotFoundError,
+  NeisException,
+  NeisHttpException,
+  type NeisClientOptions,
+  type NeispyOptions,
+  type ClassInfoParams,
+  type ClassInfoRow,
+  type MealServiceDietInfoParams,
+  type MealServiceDietInfoRow,
+  type SchoolInfoParams,
+  type SchoolInfoRow,
+  type SchoolScheduleParams,
+  type SchoolScheduleRow,
+} from "./neis/index.js";
+
+export {
+  fetchTimeTable,
+  TimetableAmbiguousSchoolError,
+  TimetableError,
+  TimetableInvalidWeekError,
+  TimetableParseError,
+  TimetableSchoolNotFoundError,
+  type FetchTimeTableOptions,
+  type Lecture,
+  type TimeTableData,
+  type TimeTableResult,
+} from "./timetable/index.js";

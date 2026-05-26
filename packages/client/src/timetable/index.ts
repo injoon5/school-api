@@ -1,5 +1,25 @@
 import iconv from "iconv-lite";
-import type { Lecture, TimeTableData, TimeTableResult } from "./types.js";
+import {
+  TimetableAmbiguousSchoolError,
+  TimetableInvalidWeekError,
+  TimetableParseError,
+  TimetableSchoolNotFoundError,
+} from "./errors.js";
+import type { FetchTimeTableOptions, TimeTableData, TimeTableResult } from "./types.js";
+
+export type {
+  FetchTimeTableOptions,
+  Lecture,
+  TimeTableData,
+  TimeTableResult,
+} from "./types.js";
+export {
+  TimetableAmbiguousSchoolError,
+  TimetableError,
+  TimetableInvalidWeekError,
+  TimetableParseError,
+  TimetableSchoolNotFoundError,
+} from "./errors.js";
 
 const COMCIGAN_URL = "http://comci.net:4082";
 const HEADERS = {
@@ -17,7 +37,6 @@ interface ComciganCodes {
   code5: string;
 }
 
-// Comcigan nests counts and period codes in heterogeneous arrays.
 type ComciganMatrix = unknown[][][][];
 
 interface ComciganResponse {
@@ -34,6 +53,11 @@ async function fetchText(
   encoding?: "euc-kr" | "utf-8",
 ): Promise<string> {
   const response = await fetch(url, { headers: HEADERS });
+  if (!response.ok) {
+    throw new TimetableParseError(
+      `Comcigan HTTP ${response.status}: ${response.statusText}`,
+    );
+  }
   const buffer = Buffer.from(await response.arrayBuffer());
   if (encoding === "euc-kr") {
     return iconv.decode(buffer, "euc-kr");
@@ -45,7 +69,9 @@ async function getCode(): Promise<ComciganCodes> {
   const text = await fetchText(`${COMCIGAN_URL}/st`, "euc-kr");
 
   const comciganMatch = text.match(/\.\/[0-9]+\?[0-9]+l/);
-  if (!comciganMatch) throw new Error("Failed to parse comcigan route code");
+  if (!comciganMatch) {
+    throw new TimetableParseError("Failed to parse Comcigan route code from /st");
+  }
 
   const code0 = text.match(/sc_data\('([0-9]+)_/)?.[1];
   const code1 = text.match(/Q성명\(자료\.자료(\d+)/)?.[1];
@@ -55,7 +81,9 @@ async function getCode(): Promise<ComciganCodes> {
   const code5 = text.match(/원자료=Q자료\(자료\.자료(\d+)/)?.[1];
 
   if (!code0 || !code1 || !code2 || !code3 || !code4 || !code5) {
-    throw new Error("Failed to parse comcigan data field codes");
+    throw new TimetableParseError(
+      "Failed to parse Comcigan timetable field codes (page layout may have changed)",
+    );
   }
 
   return {
@@ -76,21 +104,25 @@ function encodeSchoolName(schoolName: string): string {
     .join("");
 }
 
-async function getSchoolCode(
+async function resolveComciganSchool(
   schoolName: string,
   localCode: number,
   schoolCode: number,
   comciganCode: string,
-): Promise<[number, string, number] | [-1, -1, unknown] | [-2, -2, unknown]> {
+): Promise<[number, string, number]> {
   const url = `${COMCIGAN_URL}${comciganCode}${encodeSchoolName(schoolName)}`;
   const text = await fetchText(url);
   const cleaned = text.replace(/\0/g, "").trim();
-  const resp = JSON.parse(cleaned) as {
-    학교검색: [number, string, string, number][];
-  };
+
+  let resp: { 학교검색: [number, string, string, number][] };
+  try {
+    resp = JSON.parse(cleaned) as typeof resp;
+  } catch {
+    throw new TimetableParseError("Invalid JSON from Comcigan school search");
+  }
 
   if (resp.학교검색.length === 0) {
-    return [-2, -2, resp];
+    throw new TimetableSchoolNotFoundError(schoolName);
   }
 
   if (resp.학교검색.length > 1) {
@@ -108,7 +140,7 @@ async function getSchoolCode(
         }
       }
     }
-    return [-1, -1, resp];
+    throw new TimetableAmbiguousSchoolError(schoolName);
   }
 
   const first = resp.학교검색[0];
@@ -129,44 +161,41 @@ function getStringList(resp: ComciganResponse, code: string): string[] {
   return [...(resp[`자료${code}`] as string[])];
 }
 
-export async function fetchTimeTable(options: {
-  schoolName: string;
-  localCode?: number;
-  schoolCode?: number;
-  weekNum?: number;
-}): Promise<TimeTableResult> {
+/**
+ * Fetch a weekly class timetable from Comcigan (컴시간).
+ */
+export async function fetchTimeTable(
+  options: FetchTimeTableOptions,
+): Promise<TimeTableResult> {
   const weekNum = options.weekNum ?? 0;
   if (weekNum !== 0 && weekNum !== 1) {
-    throw new Error("weekNum must be 0 or 1");
+    throw new TimetableInvalidWeekError(weekNum);
   }
 
   const localCode = Number(options.localCode ?? 0);
   const schoolCodeHint = Number(options.schoolCode ?? 0);
 
   const codes = await getCode();
-  const schoolLookup = await getSchoolCode(
-    options.schoolName,
-    localCode,
-    schoolCodeHint,
-    codes.comciganCode,
-  );
+  const [resolvedLocalCode, resolvedSchoolName, resolvedSchoolCode] =
+    await resolveComciganSchool(
+      options.schoolName,
+      localCode,
+      schoolCodeHint,
+      codes.comciganCode,
+    );
 
-  if (schoolLookup[0] === -1) {
-    throw new Error("학교가 2개 이상 존재합니다.");
-  }
-  if (schoolLookup[0] === -2) {
-    throw new Error("학교를 찾을 수 없습니다.");
-  }
-
-  const resolvedLocalCode = schoolLookup[0] as number;
-  const resolvedSchoolName = schoolLookup[1] as string;
-  const resolvedSchoolCode = schoolLookup[2] as number;
   const payload = `${codes.code0}_${resolvedSchoolCode}_0_${weekNum + 1}`;
   const encoded = Buffer.from(payload, "utf-8").toString("base64");
   const timetableUrl = `${COMCIGAN_URL}${codes.comciganCode.slice(0, 7)}${encoded}`;
   const raw = await fetchText(timetableUrl);
   const jsonLine = raw.split("\n")[0];
-  const resp = JSON.parse(jsonLine) as ComciganResponse;
+
+  let resp: ComciganResponse;
+  try {
+    resp = JSON.parse(jsonLine) as ComciganResponse;
+  } catch {
+    throw new TimetableParseError("Invalid JSON from Comcigan timetable endpoint");
+  }
 
   const teacherList = getStringList(resp, codes.code1);
   teacherList[0] = "";
@@ -200,7 +229,9 @@ export async function fetchTimeTable(options: {
 
       data[grade].push([[]]);
 
-      const classOriginal = originalTimetable[grade]?.[cls] as unknown[] | undefined;
+      const classOriginal = originalTimetable[grade]?.[cls] as
+        | unknown[]
+        | undefined;
       const maxDay = asNumber(classOriginal?.[0]);
       for (let day = 1; day <= maxDay; day += 1) {
         data[grade][cls].push([]);
@@ -265,5 +296,3 @@ export async function fetchTimeTable(options: {
     homeroomTeachers: homeroomStrings,
   };
 }
-
-export type { Lecture, TimeTableData, TimeTableResult };

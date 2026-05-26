@@ -1,3 +1,12 @@
+import {
+  NeisDataNotFoundError,
+  NeisHttpException,
+  TimetableAmbiguousSchoolError,
+  TimetableInvalidWeekError,
+  TimetableParseError,
+  TimetableSchoolNotFoundError,
+} from "@schoolkit/client";
+
 export const ErrorCode = {
   VALIDATION: "VALIDATION_ERROR",
   CONFLICTING_SCHOOL_PARAMS: "CONFLICTING_SCHOOL_PARAMS",
@@ -100,46 +109,50 @@ export class ApiError extends Error {
   static fromUnknown(error: unknown): ApiError {
     if (error instanceof ApiError) return error;
 
-    const message =
-      error instanceof Error ? error.message : "An unexpected error occurred.";
-
-    if (message.includes("학교를 찾을 수 없습니다")) {
+    if (error instanceof TimetableSchoolNotFoundError) {
       return new ApiError(
         ErrorCode.TIMETABLE_SCHOOL_NOT_FOUND,
         404,
         "Comcigan could not find this school. Check the name or use schoolcode.",
+        { schoolname: error.schoolName },
       );
     }
 
-    if (message.includes("학교가 2개 이상")) {
+    if (error instanceof TimetableAmbiguousSchoolError) {
       return new ApiError(
         ErrorCode.TIMETABLE_AMBIGUOUS_SCHOOL,
         409,
         "Multiple schools matched. Pass schoolcode to disambiguate.",
+        { schoolname: error.schoolName },
       );
     }
 
-    if (message.includes("INFO-200") || message.includes("데이터가 없습니다")) {
-      return ApiError.neisDataNotFound({ upstream: message });
+    if (error instanceof TimetableInvalidWeekError) {
+      return ApiError.validation(error.message);
     }
 
-    if (message.startsWith("INFO-") || message.startsWith("ERROR-")) {
-      return new ApiError(ErrorCode.NEIS_UPSTREAM, 502, "NEIS API request failed.", {
-        upstream: message,
-      });
-    }
-
-    if (
-      message.includes("Failed to parse comcigan") ||
-      message.includes("Comcigan")
-    ) {
+    if (error instanceof TimetableParseError) {
       return new ApiError(
         ErrorCode.TIMETABLE_UPSTREAM,
         502,
         "Could not load timetable from Comcigan.",
-        { upstream: message },
+        { upstream: error.message },
       );
     }
+
+    if (error instanceof NeisDataNotFoundError) {
+      return ApiError.neisDataNotFound({ upstream: error.message });
+    }
+
+    if (error instanceof NeisHttpException) {
+      return new ApiError(ErrorCode.NEIS_UPSTREAM, 502, "NEIS API request failed.", {
+        upstream: error.message,
+        code: error.code,
+      });
+    }
+
+    const message =
+      error instanceof Error ? error.message : "An unexpected error occurred.";
 
     return new ApiError(ErrorCode.INTERNAL, 500, message);
   }

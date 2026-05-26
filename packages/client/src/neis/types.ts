@@ -75,3 +75,32 @@ interface NeisListSection<T> {
 }
 
 export type NeisApiResponse<T> = Record<string, NeisListSection<T>[]>;
+
+export interface SchoolInfoParams {
+  SCHUL_NM?: string;
+  SD_SCHUL_CODE?: string;
+  ATPT_OFCDC_SC_CODE?: string;
+}
+
+export interface ClassInfoParams {
+  ATPT_OFCDC_SC_CODE: string;
+  SD_SCHUL_CODE: string;
+  AY?: string;
+  GRADE?: string;
+}
+
+export interface MealServiceDietInfoParams {
+  ATPT_OFCDC_SC_CODE: string;
+  SD_SCHUL_CODE: string;
+  MLSV_FROM_YMD?: string;
+  MLSV_TO_YMD?: string;
+  MLSV_YMD?: string;
+}
+
+export interface SchoolScheduleParams {
+  ATPT_OFCDC_SC_CODE: string;
+  SD_SCHUL_CODE: string;
+  AA_FROM_YMD?: string;
+  AA_TO_YMD?: string;
+  AA_YMD?: string;
+}

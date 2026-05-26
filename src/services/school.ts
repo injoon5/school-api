@@ -1,7 +1,6 @@
+import { NeisClient, type SchoolInfoRow } from "@schoolkit/client";
 import { NEIS_API_KEY } from "../config.js";
 import { ApiError } from "../errors/api-error.js";
-import { Neispy } from "../neispy/client.js";
-import type { SchoolInfoRow } from "../neispy/types.js";
 
 export interface SchoolIdentifier {
   schoolname?: string;
@@ -9,7 +8,7 @@ export interface SchoolIdentifier {
 }
 
 function neis() {
-  return new Neispy({ key: NEIS_API_KEY });
+  return new NeisClient({ key: NEIS_API_KEY });
 }
 
 export function assertSingleSchoolParam({

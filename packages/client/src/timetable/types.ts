@@ -24,3 +24,12 @@ export interface TimeTableResult {
   timetable: TimeTableData[][][][];
   homeroomTeachers: string[][];
 }
+
+export interface FetchTimeTableOptions {
+  schoolName: string;
+  localCode?: number;
+  /** Comcigan internal school code, or NEIS code when disambiguating */
+  schoolCode?: number;
+  /** 0 = current week, 1 = next week */
+  weekNum?: number;
+}
