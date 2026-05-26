@@ -1,5 +1,8 @@
 node_modules/
 dist/
+apps/docs/.next/
+apps/docs/out/
+apps/docs/.source/
 __pycache__/
 *.pyc
 .env

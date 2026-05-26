@@ -4,11 +4,16 @@
   "private": true,
   "type": "module",
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "apps/*"
   ],
   "scripts": {
     "build": "npm run build -w @timeforschool/client && tsc",
     "build:client": "npm run build -w @timeforschool/client",
+    "build:docs": "npm run build -w @timeforschool/docs",
+    "dev:docs": "npm run dev -w @timeforschool/docs",
+    "openapi:export": "npm run build:client && tsx scripts/export-openapi.ts",
+    "openapi:sync": "npm run openapi:export && npm run openapi:generate -w @timeforschool/docs",
     "dev": "tsx watch src/server.ts",
     "start": "node dist/server.js",
     "test": "tsx src/test/compare.ts && tsx src/test/yangjeong-1-3.ts",

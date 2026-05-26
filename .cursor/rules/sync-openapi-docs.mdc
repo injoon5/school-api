@@ -1,0 +1,21 @@
+---
+description: Regenerate Fumadocs OpenAPI pages when the HTTP API or schemas change
+globs:
+  - src/**/*
+  - "!src/test/**"
+alwaysApply: false
+---
+
+# Sync OpenAPI docs
+
+After editing routes, schemas, OpenAPI config, services, or API errors under `src/`:
+
+1. Run from repo root: `npm run openapi:sync`
+2. Commit any changes under:
+   - `apps/docs/openapi/openapi.json`
+   - `apps/docs/content/docs/api/`
+3. Run `npm run build:docs` to verify.
+
+Do not hand-edit generated `apps/docs/content/docs/api/*.mdx` files.
+
+Full agent workflow: [AGENTS.md](../../AGENTS.md). Deployment: [docs/vercel-deploy.md](../../docs/vercel-deploy.md).

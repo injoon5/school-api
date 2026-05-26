@@ -1,0 +1,39 @@
+---
+title: Client errors
+description: Typed error classes from @timeforschool/client
+---
+
+## NEIS
+
+| Class | When |
+| ----- | ---- |
+| `NeisDataNotFoundError` | NEIS `INFO-200` (no rows) |
+| `NeisHttpException` | Other NEIS API errors |
+| `NeisException` | Base class |
+
+## Timetable
+
+| Class | When |
+| ----- | ---- |
+| `TimetableSchoolNotFoundError` | Comcigan school search empty |
+| `TimetableAmbiguousSchoolError` | Multiple Comcigan matches |
+| `TimetableParseError` | HTML/JSON parse failure |
+| `TimetableInvalidWeekError` | `weekNum` not `0` or `1` |
+| `TimetableError` | Base class |
+
+## HTTP API
+
+The hosted API returns a consistent JSON envelope:
+
+```json
+{
+  "ok": false,
+  "error": {
+    "code": "SCHOOL_NOT_FOUND",
+    "message": "No school matched the given identifier.",
+    "details": { "schoolname": "..." }
+  }
+}
+```
+
+See the [HTTP API reference](/docs/api) for status codes per `error.code`.

@@ -11,7 +11,36 @@ Built with [Elysia](https://elysiajs.com). Interactive reference UI is [Scalar](
 | Package | Path | Description |
 |---------|------|-------------|
 | `timeforschool-api` | repo root | HTTP API (`src/`) |
-| `@timeforschool/client` | `packages/client/` | NEIS + Comcigan client library |
+| `@timeforschool/client` | `packages/client/` | NEIS + Comcigan client library (publishable to npm) |
+| `@timeforschool/docs` | `apps/docs/` | Fumadocs site (client + OpenAPI reference) |
+
+## Documentation site
+
+[Fumadocs](https://www.fumadocs.dev/) + Next.js at `apps/docs/`:
+
+```bash
+npm run dev:docs          # http://localhost:3000
+npm run build:docs
+```
+
+When API routes or schemas change, refresh the committed OpenAPI artifact and generated MDX:
+
+```bash
+npm run openapi:sync
+```
+
+Deploy on Vercel as **two projects** (API at repo root, docs at `apps/docs`). Full plan: [docs/vercel-deploy.md](docs/vercel-deploy.md).
+
+Agents: see [AGENTS.md](AGENTS.md) — run `npm run openapi:sync` when changing `src/` API code.
+
+## Publishing `@timeforschool/client`
+
+```bash
+npm run build -w @timeforschool/client
+npm publish -w @timeforschool/client --access public
+```
+
+Requires an npm account with access to the `@timeforschool` scope. CI publish on GitHub Release uses `.github/workflows/publish-client.yml` and `NPM_TOKEN`.
 
 Use the client standalone:
 
@@ -31,7 +60,7 @@ OpenAPI follows [Elysia’s OpenAPI pattern](https://elysiajs.com/patterns/opena
 | OpenAPI 3 JSON | `/docs/json` |
 | Service metadata | `GET /` |
 
-Production docs: https://api.timefor.school/docs
+Documentation site: https://docs.timefor.school (Scalar on API: https://api.timefor.school/docs)
 
 - **Servers** — Production and `localhost:8000` are listed in the OpenAPI `servers` block and Scalar’s server picker.
 - **Tags** — Sidebar groups (Meta, School, Classes, …) from `documentation.tags` + each route’s `detail.tags`.

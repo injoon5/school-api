@@ -1,0 +1,4 @@
+{
+  "title": "HTTP API",
+  "pages": ["meta", "school", "classes", "timetable", "lunch", "schedule"]
+}
