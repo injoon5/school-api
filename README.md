@@ -60,7 +60,7 @@ OpenAPI follows [Elysia’s OpenAPI pattern](https://elysiajs.com/patterns/opena
 | OpenAPI 3 JSON | `/docs/json` |
 | Service metadata | `GET /` |
 
-Production docs: https://api.timefor.school/docs
+Documentation site: https://docs.timefor.school (Scalar on API: https://api.timefor.school/docs)
 
 - **Servers** — Production and `localhost:8000` are listed in the OpenAPI `servers` block and Scalar’s server picker.
 - **Tags** — Sidebar groups (Meta, School, Classes, …) from `documentation.tags` + each route’s `detail.tags`.

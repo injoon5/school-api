@@ -17,7 +17,7 @@ flowchart LR
 
   subgraph domains [Domains]
     apiHost[api.timefor.school]
-    docsHost[timefor.school or docs.timefor.school]
+    docsHost[docs.timefor.school]
   end
 
   main --> apiProj
@@ -29,7 +29,7 @@ flowchart LR
 | Project | Root directory | Framework | Production domain (suggested) |
 | ------- | -------------- | --------- | ----------------------------- |
 | **API** | `.` (repo root) | Elysia (auto-detected) | `api.timefor.school` |
-| **Docs** | `apps/docs` | Next.js | `timefor.school` or `docs.timefor.school` |
+| **Docs** | `apps/docs` | Next.js | `docs.timefor.school` |
 
 Preview deployments: every PR gets preview URLs on **both** projects if both are linked to the repo (optional: only enable docs previews).
 
@@ -101,20 +101,14 @@ Vercel runs these **from `apps/docs`**, so `cd ../..` reaches the repo root and 
 
 | Name | Environments | Notes |
 | ---- | ------------ | ----- |
-| `NEXT_PUBLIC_DOCS_URL` | Production | Canonical URL for OG/metadata, e.g. `https://timefor.school` |
+| `NEXT_PUBLIC_DOCS_URL` | Production | `https://docs.timefor.school` |
 
-### Domain options
+### Domain
 
-**Option A — subdomain (simplest)**  
-- `docs.timefor.school` → docs project only.  
-- No path conflicts with marketing site.
-
-**Option B — apex + path**  
-- `timefor.school` on docs project; marketing at `/` is this app’s home page.  
-- Or use Vercel rewrites from a separate marketing project to `/docs` on this app (more moving parts).
-
-**Option C — path on API domain (not recommended)**  
-- Avoid serving Next and Elysia on the same project.
+- Add **`docs.timefor.school`** in **Settings → Domains** on the docs project.
+- DNS: CNAME `docs` → Vercel (`cname.vercel-dns.com` or the target shown in the dashboard).
+- The app serves the home page at `/` and documentation at `/docs/*` (e.g. `https://docs.timefor.school/docs/client`).
+- Keep Scalar/live OpenAPI on the API host: `https://api.timefor.school/docs`.
 
 ### Monorepo setting
 
@@ -165,13 +159,13 @@ CI also enforces this on PRs (see `.github/workflows/sync-docs.yml`). Agents sho
 - [ ] Create Vercel team/project for **docs** (`apps/docs`).
 - [ ] Set `NEIS_API_KEY` on API project.
 - [ ] Set `NEXT_PUBLIC_DOCS_URL` on docs project.
-- [ ] Attach domains: `api.timefor.school`, docs domain.
+- [ ] Attach domains: `api.timefor.school`, `docs.timefor.school`.
 - [ ] Confirm PR preview works for both.
 
 ### Per release
 
 - [ ] Merge to `main`; verify API + docs production deployments green.
-- [ ] Spot-check `https://<docs>/docs/api` try-it targets `api.timefor.school`.
+- [ ] Spot-check `https://docs.timefor.school/docs/api` try-it targets `api.timefor.school`.
 - [ ] Publish npm package separately (GitHub Release + `publish-client` workflow).
 
 ---

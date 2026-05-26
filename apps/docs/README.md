@@ -25,4 +25,4 @@ Optional env:
 
 | Variable | Description |
 | -------- | ----------- |
-| `NEXT_PUBLIC_DOCS_URL` | Canonical site URL for metadata (default `https://timefor.school`) |
+| `NEXT_PUBLIC_DOCS_URL` | Canonical site URL for metadata (default `https://docs.timefor.school`) |

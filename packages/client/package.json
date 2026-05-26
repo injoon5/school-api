@@ -10,7 +10,7 @@
     "url": "git+https://github.com/injoon5/school-api.git",
     "directory": "packages/client"
   },
-  "homepage": "https://timefor.school/docs/client",
+  "homepage": "https://docs.timefor.school/docs/client",
   "bugs": {
     "url": "https://github.com/injoon5/school-api/issues"
   },

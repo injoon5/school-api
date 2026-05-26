@@ -9,7 +9,7 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   metadataBase: new URL(
-    process.env.NEXT_PUBLIC_DOCS_URL ?? 'https://timefor.school',
+    process.env.NEXT_PUBLIC_DOCS_URL ?? 'https://docs.timefor.school',
   ),
   title: {
     default: 'TimeForSchool',
