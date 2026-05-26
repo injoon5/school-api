@@ -1,14 +1,15 @@
+import type { SchoolScheduleRow } from "@timeforschool/client";
 import type { Static } from "elysia";
-import type { DateRangeSchoolQueryParams } from "../schemas/common.js";
-import { ScheduleListSchema } from "../schemas/responses.js";
-import { ApiError } from "../errors/api-error.js";
-import { omitNullsFromRows } from "../utils/json.js";
+import type { DateRangeSchoolQueryParams } from "../../schemas/common.js";
+import { mapScheduleList } from "../../schemas/mappers.js";
+import { ScheduleListSchema } from "../../schemas/responses.js";
+import { ApiError } from "../../errors/api-error.js";
+import { createNeisClient } from "../../shared/neis.js";
 import {
   assertSingleSchoolParam,
   requireSchoolParam,
   resolveSchool,
-} from "./school.js";
-import { createNeispy } from "./neis.js";
+} from "../../shared/school.js";
 
 export async function getSchedule(
   params: DateRangeSchoolQueryParams,
@@ -17,7 +18,7 @@ export async function getSchedule(
   requireSchoolParam(params);
 
   const school = await resolveSchool(params);
-  const rows = await createNeispy().schoolSchedule({
+  const rows: SchoolScheduleRow[] = await createNeisClient().schoolSchedule({
     ATPT_OFCDC_SC_CODE: school.ATPT_OFCDC_SC_CODE,
     SD_SCHUL_CODE: school.SD_SCHUL_CODE,
     AA_FROM_YMD: params.startdate,
@@ -33,5 +34,5 @@ export async function getSchedule(
     });
   }
 
-  return omitNullsFromRows(rows) as Static<typeof ScheduleListSchema>;
+  return mapScheduleList(rows);
 }

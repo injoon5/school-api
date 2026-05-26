@@ -11,7 +11,7 @@
     "build:client": "npm run build -w @timeforschool/client",
     "dev": "tsx watch src/server.ts",
     "start": "node dist/server.js",
-    "test": "tsx src/test/compare.ts && tsx src/test/yangjeong-1-3.ts",
+    "test": "tsx src/test/school-validation.ts && tsx src/test/compare.ts && tsx src/test/yangjeong-1-3.ts",
     "vercel:dev": "vercel dev",
     "vercel:deploy": "vercel deploy --prod"
   },

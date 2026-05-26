@@ -1,12 +1,13 @@
 import { fetchTimeTable } from "@timeforschool/client";
 import type { Static } from "elysia";
-import type { TimetableQueryParams } from "../schemas/common.js";
-import { TimetableResponseSchema } from "../schemas/responses.js";
-import { ApiError, ErrorCode } from "../errors/api-error.js";
+import type { TimetableQueryParams } from "../../schemas/common.js";
+import { mapTimetableResponse } from "../../schemas/mappers.js";
+import { TimetableResponseSchema } from "../../schemas/responses.js";
+import { ApiError, ErrorCode } from "../../errors/api-error.js";
 import {
   assertSingleSchoolParam,
   lookupSchoolNameByCode,
-} from "./school.js";
+} from "../../shared/school.js";
 
 export async function getTimetable(
   params: TimetableQueryParams,
@@ -43,9 +44,9 @@ export async function getTimetable(
     );
   }
 
-  return {
-    day_time: timetable.dayTime,
-    timetable: weekDays,
-    update_date: timetable.updateDate,
-  } as Static<typeof TimetableResponseSchema>;
+  return mapTimetableResponse({
+    dayTime: timetable.dayTime,
+    weekDays,
+    updateDate: timetable.updateDate,
+  });
 }

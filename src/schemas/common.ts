@@ -32,6 +32,12 @@ export const SchoolQuery = t.Object(
 
 export type SchoolIdentifier = Static<typeof SchoolQuery>;
 
+export const SchoolSearchQuery = t.Object({
+  schoolname: t.Optional(SchoolName),
+});
+
+export type SchoolSearchParams = Static<typeof SchoolSearchQuery>;
+
 export const Grade = t.Numeric({
   minimum: 1,
   maximum: 6,

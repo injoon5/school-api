@@ -4,7 +4,3 @@ import { NEIS_API_KEY } from "../config.js";
 export function createNeisClient(): NeisClient {
   return new NeisClient({ key: NEIS_API_KEY });
 }
-
-export function createNeispy(): NeisClient {
-  return new NeisClient({ key: NEIS_API_KEY });
-}
