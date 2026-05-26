@@ -1,0 +1,72 @@
+name: Sync API docs
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "scripts/export-openapi.ts"
+  pull_request:
+    paths:
+      - "src/**"
+      - "scripts/export-openapi.ts"
+      - "apps/docs/openapi/**"
+      - "apps/docs/content/docs/api/**"
+      - "apps/docs/scripts/**"
+      - ".github/workflows/sync-docs.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  pr-check:
+    name: Verify OpenAPI docs are up to date
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - run: npm ci
+      - run: npm run openapi:sync
+
+      - name: Fail if generated docs differ
+        run: |
+          if ! git diff --exit-code -- apps/docs/openapi apps/docs/content/docs/api; then
+            echo "::error::OpenAPI docs are out of date. Run 'npm run openapi:sync' locally and commit."
+            git diff --stat -- apps/docs/openapi apps/docs/content/docs/api
+            exit 1
+          fi
+
+  main-sync:
+    name: Auto-commit OpenAPI docs on main
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - run: npm ci
+      - run: npm run openapi:sync
+
+      - name: Commit and push if needed
+        run: |
+          if git diff --quiet -- apps/docs/openapi apps/docs/content/docs/api; then
+            echo "Docs already in sync."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add apps/docs/openapi apps/docs/content/docs/api
+          git commit -m "chore(docs): sync OpenAPI from API [skip ci]"
+          git push

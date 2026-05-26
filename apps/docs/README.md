@@ -17,6 +17,8 @@ npm run openapi:sync   # export spec from Elysia + regenerate API MDX
 
 ## Deploy (Vercel)
 
+This is the **docs** Vercel project only (separate from the Elysia API project). See [docs/vercel-deploy.md](../../docs/vercel-deploy.md).
+
 Set **Root Directory** to `apps/docs`. The install/build commands in `vercel.json` run from the monorepo root so workspaces resolve.
 
 Optional env:

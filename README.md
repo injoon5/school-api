@@ -29,7 +29,9 @@ When API routes or schemas change, refresh the committed OpenAPI artifact and ge
 npm run openapi:sync
 ```
 
-Deploy the docs app on Vercel with **Root Directory** `apps/docs` (see `apps/docs/vercel.json`).
+Deploy on Vercel as **two projects** (API at repo root, docs at `apps/docs`). Full plan: [docs/vercel-deploy.md](docs/vercel-deploy.md).
+
+Agents: see [AGENTS.md](AGENTS.md) — run `npm run openapi:sync` when changing `src/` API code.
 
 ## Publishing `@timeforschool/client`
 
