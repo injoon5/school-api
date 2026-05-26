@@ -5,7 +5,7 @@ import {
   TimetableInvalidWeekError,
   TimetableParseError,
   TimetableSchoolNotFoundError,
-} from "@schoolkit/client";
+} from "@timeforschool/client";
 
 export const ErrorCode = {
   VALIDATION: "VALIDATION_ERROR",

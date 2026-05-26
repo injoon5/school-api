@@ -1,4 +1,4 @@
-import { NeisClient, type SchoolInfoRow } from "@schoolkit/client";
+import { NeisClient, type SchoolInfoRow } from "@timeforschool/client";
 import { NEIS_API_KEY } from "../config.js";
 import { ApiError } from "../errors/api-error.js";
 

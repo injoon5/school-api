@@ -1,5 +1,5 @@
 {
-  "name": "@schoolkit/client",
+  "name": "@timeforschool/client",
   "version": "0.1.0",
   "description": "TypeScript client for the Korean NEIS Open API and Comcigan school timetables",
   "type": "module",

@@ -1,4 +1,4 @@
-# @schoolkit/client
+# @timeforschool/client
 
 TypeScript client for Korean school data APIs:
 
@@ -8,19 +8,19 @@ TypeScript client for Korean school data APIs:
 ## Install
 
 ```bash
-npm install @schoolkit/client
+npm install @timeforschool/client
 ```
 
 In this monorepo:
 
 ```json
-{ "dependencies": { "@schoolkit/client": "workspace:*" } }
+{ "dependencies": { "@timeforschool/client": "workspace:*" } }
 ```
 
 ## NEIS
 
 ```typescript
-import { NeisClient, NeisDataNotFoundError } from "@schoolkit/client";
+import { NeisClient, NeisDataNotFoundError } from "@timeforschool/client";
 
 const neis = new NeisClient({ key: process.env.NEIS_API_KEY });
 
@@ -54,7 +54,7 @@ try {
 }
 ```
 
-Subpath import: `@schoolkit/client/neis`
+Subpath import: `@timeforschool/client/neis`
 
 ## Timetable (Comcigan)
 
@@ -63,7 +63,7 @@ import {
   fetchTimeTable,
   TimetableAmbiguousSchoolError,
   TimetableSchoolNotFoundError,
-} from "@schoolkit/client";
+} from "@timeforschool/client";
 
 const table = await fetchTimeTable({
   schoolName: "양정고등학교",
@@ -74,7 +74,7 @@ const grade1Class3 = table.timetable[1][3].slice(1); // weekdays only
 console.log(table.dayTime, table.updateDate);
 ```
 
-Subpath import: `@schoolkit/client/timetable`
+Subpath import: `@timeforschool/client/timetable`
 
 ## Errors
 

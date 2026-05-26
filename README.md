@@ -1,6 +1,8 @@
-# SchoolKit
+# TimeForSchool API
 
 TypeScript API for NEIS school data (school info, classes, lunch, schedule) and Comcigan timetables.
+
+Production: https://api.timefor.school
 
 Built with [Elysia](https://elysiajs.com).
 
@@ -8,13 +10,13 @@ Built with [Elysia](https://elysiajs.com).
 
 | Package | Path | Description |
 |---------|------|-------------|
-| `schoolkit-api` | repo root | HTTP API (`src/`) |
-| `@schoolkit/client` | `packages/client/` | NEIS + Comcigan client library |
+| `timeforschool-api` | repo root | HTTP API (`src/`) |
+| `@timeforschool/client` | `packages/client/` | NEIS + Comcigan client library |
 
 Use the client standalone:
 
 ```ts
-import { NeisClient, fetchTimeTable } from "@schoolkit/client";
+import { NeisClient, fetchTimeTable } from "@timeforschool/client";
 ```
 
 See [packages/client/README.md](packages/client/README.md).
@@ -97,7 +99,7 @@ Errors use a consistent JSON shape and HTTP status code:
 
 ## Scripts
 
-- `npm run build` — build `@schoolkit/client`, then compile API to `dist/`
+- `npm run build` — build `@timeforschool/client`, then compile API to `dist/`
 - `npm run build:client` — build client package only
 - `npm start` — run compiled server
 - `npm test` — structural smoke tests

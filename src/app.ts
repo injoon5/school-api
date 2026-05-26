@@ -4,7 +4,7 @@ import {
   fetchTimeTable,
   NeisClient,
   Neispy,
-} from "@schoolkit/client";
+} from "@timeforschool/client";
 import { Elysia, t } from "elysia";
 import { CORS_ORIGINS, NEIS_API_KEY } from "./config.js";
 import { ApiError, ErrorCode } from "./errors/api-error.js";
@@ -27,7 +27,7 @@ import {
 const REMOVE_PAREN_PATTERN = /\([^)]*\)/g;
 
 const API_DESCRIPTION = `
-SchoolKit wraps the Korean **NEIS Open API** (school info, classes, meals, calendar) and **Comcigan** (weekly class timetables).
+TimeForSchool wraps the Korean **NEIS Open API** (school info, classes, meals, calendar) and **Comcigan** (weekly class timetables).
 
 ### School identifier
 Use **either** \`schoolname\` **or** \`schoolcode\` (NEIS 7-digit code)—never both.
@@ -45,7 +45,7 @@ function handleRoute<T>(fn: () => Promise<T>): Promise<T> {
   });
 }
 
-export const app = new Elysia({ name: "schoolkit" })
+export const app = new Elysia({ name: "timeforschool" })
   .use(
     cors({
       origin: CORS_ORIGINS,
@@ -57,7 +57,7 @@ export const app = new Elysia({ name: "schoolkit" })
       path: "/docs",
       documentation: {
         info: {
-          title: "SchoolKit API",
+          title: "TimeForSchool API",
           version: "0.0.1",
           description: API_DESCRIPTION,
         },
@@ -96,7 +96,7 @@ export const app = new Elysia({ name: "schoolkit" })
   .get(
     "/",
     () => ({
-      name: "SchoolKit",
+      name: "TimeForSchool",
       version: "0.0.1",
       docs: "/docs",
       openapi: "/docs/json",
