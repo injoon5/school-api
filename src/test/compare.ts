@@ -29,6 +29,18 @@ async function main() {
   assertSchoolList(partial.body);
   console.log("✓ GET /school partial name (양정)");
 
+  const short = await requestJson(app, "/school?schoolname=양");
+  assert(short.status === 200, `GET /school short name expected 200, got ${short.status}`);
+  assert(!isErrorBody(short.body), `/school short error: ${JSON.stringify(short.body)}`);
+  assertSchoolList(short.body);
+  console.log("✓ GET /school short name (양)");
+
+  const middle = await requestJson(app, "/school?schoolname=중학");
+  assert(middle.status === 200, `GET /school middle schools expected 200, got ${middle.status}`);
+  assert(!isErrorBody(middle.body), `/school middle error: ${JSON.stringify(middle.body)}`);
+  assertSchoolList(middle.body);
+  console.log("✓ GET /school middle schools (중학)");
+
   const classes = await requestJson(app, "/classes?grade=1&schoolname=목운중학교");
   assert(classes.status === 200, `GET /classes expected 200`);
   assertClassList(classes.body);
