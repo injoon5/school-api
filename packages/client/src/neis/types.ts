@@ -22,7 +22,7 @@ export interface SchoolInfoRow extends SchoolRelatedRow {
   ORG_FAXNO: string;
   HS_SC_NM: string | null;
   INDST_SPECL_CCCCL_EXST_YN: string;
-  HS_GNRL_BUSNS_SC_NM: string;
+  HS_GNRL_BUSNS_SC_NM?: string | null;
   SPCLY_PURPS_HS_ORD_NM: string | null;
   ENE_BFE_SEHF_SC_NM: string;
   DGHT_SC_NM: string;

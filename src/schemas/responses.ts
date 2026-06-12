@@ -35,7 +35,7 @@ export const SchoolInfoRowSchema = t.Object(
     ORG_FAXNO: neisString("Fax", "02-2649-7079"),
     HS_SC_NM: neisOptionalString("High school division", "일반고"),
     INDST_SPECL_CCCCL_EXST_YN: neisString("Industry cluster exists", "N"),
-    HS_GNRL_BUSNS_SC_NM: neisString("General/vocational", "일반계"),
+    HS_GNRL_BUSNS_SC_NM: neisOptionalString("General/vocational", "일반계"),
     SPCLY_PURPS_HS_ORD_NM: neisOptionalString(
       "Special-purpose high school order",
       "해당없음",

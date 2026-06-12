@@ -23,6 +23,12 @@ async function main() {
   assertSchoolList(school.body);
   console.log("✓ GET /school");
 
+  const partial = await requestJson(app, "/school?schoolname=양정");
+  assert(partial.status === 200, `GET /school partial name expected 200, got ${partial.status}`);
+  assert(!isErrorBody(partial.body), `/school partial error: ${JSON.stringify(partial.body)}`);
+  assertSchoolList(partial.body);
+  console.log("✓ GET /school partial name (양정)");
+
   const classes = await requestJson(app, "/classes?grade=1&schoolname=목운중학교");
   assert(classes.status === 200, `GET /classes expected 200`);
   assertClassList(classes.body);
