@@ -15,14 +15,17 @@ on:
       - "apps/docs/scripts/**"
       - ".github/workflows/sync-docs.yml"
 
+# Least privilege by default; only the auto-commit job elevates to write.
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   pr-check:
     name: Verify OpenAPI docs are up to date
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
 
@@ -46,6 +49,12 @@ jobs:
     name: Auto-commit OpenAPI docs on main
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    # Serialize auto-commits so concurrent merges to main can't race on the push.
+    concurrency:
+      group: sync-docs-main
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
         with:

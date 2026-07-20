@@ -12,12 +12,16 @@ import type {
 } from "./types.js";
 
 const NEIS_BASE = "https://open.neis.go.kr/hub";
+const DEFAULT_TIMEOUT_MS = 10_000;
 
 export interface NeisClientOptions {
-  /** NEIS Open API key. Uses the public sample key when omitted. */
+  /** NEIS Open API key. When omitted, requests are sent anonymously (stricter rate limits apply). */
   key?: string;
   pIndex?: number;
+  /** Rows per page (NEIS allows up to 1000). Defaults to 1000 to avoid silent truncation. */
   pSize?: number;
+  /** Per-request timeout in milliseconds. Defaults to 10s. */
+  timeoutMs?: number;
 }
 
 function extractRows<T>(data: NeisApiResponse<T>, key: string): T[] {
@@ -33,11 +37,13 @@ export class NeisClient {
   private readonly key?: string;
   private readonly pIndex: number;
   private readonly pSize: number;
+  private readonly timeoutMs: number;
 
   constructor(options: NeisClientOptions = {}) {
     this.key = options.key;
     this.pIndex = options.pIndex ?? 1;
-    this.pSize = options.pSize ?? 100;
+    this.pSize = options.pSize ?? 1000;
+    this.timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   }
 
   private async request<T>(
@@ -58,7 +64,9 @@ export class NeisClient {
     }
 
     const url = `${NEIS_BASE}${endpoint}?${search}`;
-    const response = await fetch(url);
+    const response = await fetch(url, {
+      signal: AbortSignal.timeout(this.timeoutMs),
+    });
 
     if (!response.ok) {
       throw new Error(`NEIS HTTP ${response.status}: ${response.statusText}`);

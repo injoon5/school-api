@@ -701,6 +701,12 @@
                       },
                       {
                         "type": "boolean"
+                      },
+                      {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
                       }
                     ]
                   }
@@ -712,15 +718,14 @@
         "$id": "#/components/schemas/ApiError"
       },
       "SchoolInfoList": {
-        "minItems": 1,
         "examples": [
           [
             {
               "ATPT_OFCDC_SC_CODE": "B10",
               "ATPT_OFCDC_SC_NM": "서울특별시교육청",
               "SD_SCHUL_CODE": "7010208",
-              "SCHUL_NM": "목운중학교",
-              "ENG_SCHUL_NM": "Yangchung High School",
+              "SCHUL_NM": "양정고등학교",
+              "ENG_SCHUL_NM": "Yangjeong High School",
               "SCHUL_KND_SC_NM": "고등학교",
               "LCTN_SC_NM": "서울특별시",
               "JU_ORG_NM": "서울특별시교육청",
@@ -796,14 +801,14 @@
             "SCHUL_NM": {
               "description": "School name",
               "examples": [
-                "목운중학교"
+                "양정고등학교"
               ],
               "type": "string"
             },
             "ENG_SCHUL_NM": {
               "description": "English school name",
               "examples": [
-                "Yangchung High School"
+                "Yangjeong High School"
               ],
               "type": "string"
             },
@@ -972,7 +977,6 @@
         ],
         "properties": {
           "day_time": {
-            "minItems": 1,
             "examples": [
               [
                 "09:00",
@@ -989,7 +993,6 @@
             }
           },
           "timetable": {
-            "minItems": 1,
             "examples": [
               [
                 [
@@ -1123,7 +1126,6 @@
         "$id": "#/components/schemas/TimetableResponse"
       },
       "MealList": {
-        "minItems": 1,
         "examples": [
           [
             {
@@ -1276,7 +1278,6 @@
         "$id": "#/components/schemas/MealList"
       },
       "ScheduleList": {
-        "minItems": 1,
         "examples": [
           [
             {

@@ -8,3 +8,10 @@ __pycache__/
 .env
 .env.local
 .DS_Store
+
+# Editor state
+.idea/
+.vscode/
+
+# Local Comcigan debug dump (not a source artifact)
+timetable.json

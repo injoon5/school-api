@@ -151,18 +151,14 @@ export class ApiError extends Error {
       });
     }
 
-    const message =
-      error instanceof Error ? error.message : "An unexpected error occurred.";
+    // Unknown/unmapped errors may carry internal details (paths, dependency
+    // internals). Log the real error server-side; return a generic message.
+    console.error("Unhandled error:", error);
 
-    return new ApiError(ErrorCode.INTERNAL, 500, message);
+    return new ApiError(
+      ErrorCode.INTERNAL,
+      500,
+      "An unexpected error occurred.",
+    );
   }
-}
-
-export function isApiErrorBody(body: unknown): body is ApiErrorBody {
-  return (
-    typeof body === "object" &&
-    body !== null &&
-    (body as ApiErrorBody).ok === false &&
-    typeof (body as ApiErrorBody).error?.code === "string"
-  );
 }
