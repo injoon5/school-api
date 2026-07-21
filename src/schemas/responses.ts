@@ -20,8 +20,8 @@ export const SchoolInfoRowSchema = t.Object(
     ATPT_OFCDC_SC_CODE: neisString("Office of education code", "B10"),
     ATPT_OFCDC_SC_NM: neisString("Office of education name", "서울특별시교육청"),
     SD_SCHUL_CODE: neisString("School code", "7010208"),
-    SCHUL_NM: neisString("School name", "목운중학교"),
-    ENG_SCHUL_NM: neisString("English school name", "Yangchung High School"),
+    SCHUL_NM: neisString("School name", "양정고등학교"),
+    ENG_SCHUL_NM: neisString("English school name", "Yangjeong High School"),
     SCHUL_KND_SC_NM: neisString("School kind", "고등학교"),
     LCTN_SC_NM: neisString("Location", "서울특별시"),
     JU_ORG_NM: neisString("Administrative organization", "서울특별시교육청"),
@@ -50,15 +50,14 @@ export const SchoolInfoRowSchema = t.Object(
 );
 
 export const SchoolInfoListSchema = t.Array(SchoolInfoRowSchema, {
-  minItems: 1,
   examples: [
     [
       {
         ATPT_OFCDC_SC_CODE: "B10",
         ATPT_OFCDC_SC_NM: "서울특별시교육청",
         SD_SCHUL_CODE: "7010208",
-        SCHUL_NM: "목운중학교",
-        ENG_SCHUL_NM: "Yangchung High School",
+        SCHUL_NM: "양정고등학교",
+        ENG_SCHUL_NM: "Yangjeong High School",
         SCHUL_KND_SC_NM: "고등학교",
         LCTN_SC_NM: "서울특별시",
         JU_ORG_NM: "서울특별시교육청",
@@ -106,7 +105,6 @@ export const MealRowSchema = t.Object(
 );
 
 export const MealListSchema = t.Array(MealRowSchema, {
-  minItems: 1,
   examples: [
     [
       {
@@ -155,7 +153,6 @@ export const ScheduleRowSchema = t.Object(
 );
 
 export const ScheduleListSchema = t.Array(ScheduleRowSchema, {
-  minItems: 1,
   examples: [
     [
       {
@@ -205,11 +202,9 @@ export const TimetablePeriodSchema = t.Object({
 
 export const TimetableResponseSchema = t.Object({
   day_time: t.Array(t.String({ examples: ["09:00"] }), {
-    minItems: 1,
     examples: [["09:00", "09:50", "10:00"]],
   }),
   timetable: t.Array(t.Array(TimetablePeriodSchema), {
-    minItems: 1,
     examples: [
       [
         [

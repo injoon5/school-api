@@ -1,3 +1,5 @@
+import { API_VERSION } from "./config.js";
+
 const API_DESCRIPTION = `
 TimeForSchool wraps the Korean **NEIS Open API** (school info, classes, meals, calendar) and **Comcigan** (weekly class timetables).
 
@@ -27,7 +29,7 @@ export const openApiPluginConfig = {
   documentation: {
     info: {
       title: "TimeForSchool API",
-      version: "0.0.1",
+      version: API_VERSION,
       description: API_DESCRIPTION,
     },
     tags: [

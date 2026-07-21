@@ -26,6 +26,15 @@ const HEADERS = {
   "User-Agent":
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/106.0.0.0 Safari/537.36",
 };
+const DEFAULT_TIMEOUT_MS = 10_000;
+
+/**
+ * The `/st` route/field codes change rarely, so cache them briefly to avoid a
+ * scrape + parse on every timetable request. TTL keeps us resilient to the
+ * occasional upstream layout change without a process restart.
+ */
+const CODE_CACHE_TTL_MS = 5 * 60_000;
+let codeCache: { value: ComciganCodes; expiresAt: number } | null = null;
 
 interface ComciganCodes {
   comciganCode: string;
@@ -52,7 +61,10 @@ async function fetchText(
   url: string,
   encoding?: "euc-kr" | "utf-8",
 ): Promise<string> {
-  const response = await fetch(url, { headers: HEADERS });
+  const response = await fetch(url, {
+    headers: HEADERS,
+    signal: AbortSignal.timeout(DEFAULT_TIMEOUT_MS),
+  });
   if (!response.ok) {
     throw new TimetableParseError(
       `Comcigan HTTP ${response.status}: ${response.statusText}`,
@@ -66,6 +78,10 @@ async function fetchText(
 }
 
 async function getCode(): Promise<ComciganCodes> {
+  if (codeCache && codeCache.expiresAt > Date.now()) {
+    return codeCache.value;
+  }
+
   const text = await fetchText(`${COMCIGAN_URL}/st`, "euc-kr");
 
   const comciganMatch = text.match(/\.\/[0-9]+\?[0-9]+l/);
@@ -86,7 +102,7 @@ async function getCode(): Promise<ComciganCodes> {
     );
   }
 
-  return {
+  const value: ComciganCodes = {
     comciganCode: comciganMatch[0].slice(1),
     code0,
     code1,
@@ -95,6 +111,8 @@ async function getCode(): Promise<ComciganCodes> {
     code4,
     code5,
   };
+  codeCache = { value, expiresAt: Date.now() + CODE_CACHE_TTL_MS };
+  return value;
 }
 
 function encodeSchoolName(schoolName: string): string {
@@ -119,6 +137,12 @@ async function resolveComciganSchool(
     resp = JSON.parse(cleaned) as typeof resp;
   } catch {
     throw new TimetableParseError("Invalid JSON from Comcigan school search");
+  }
+
+  if (!Array.isArray(resp?.학교검색)) {
+    throw new TimetableParseError(
+      "Unexpected Comcigan school-search payload (missing 학교검색 list)",
+    );
   }
 
   if (resp.학교검색.length === 0) {
@@ -148,17 +172,32 @@ async function resolveComciganSchool(
 }
 
 function asNumber(value: unknown): number {
-  if (typeof value === "number") return value;
-  if (typeof value === "string" && value !== "") return Number(value);
+  if (typeof value === "number") return Number.isFinite(value) ? value : 0;
+  if (typeof value === "string" && value !== "") {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
   return 0;
 }
 
 function getMatrix(resp: ComciganResponse, code: string): ComciganMatrix {
-  return resp[`자료${code}`] as ComciganMatrix;
+  const field = resp[`자료${code}`];
+  if (!Array.isArray(field)) {
+    throw new TimetableParseError(
+      `Comcigan response missing expected matrix field 자료${code}`,
+    );
+  }
+  return field as ComciganMatrix;
 }
 
 function getStringList(resp: ComciganResponse, code: string): string[] {
-  return [...(resp[`자료${code}`] as string[])];
+  const field = resp[`자료${code}`];
+  if (!Array.isArray(field)) {
+    throw new TimetableParseError(
+      `Comcigan response missing expected list field 자료${code}`,
+    );
+  }
+  return [...(field as string[])];
 }
 
 /**
@@ -246,7 +285,7 @@ export async function fetchTimeTable(
             dayPeriodCount < period ? 0 : asNumber(dayCells?.[period] ?? 0);
 
           const subjectIndex = Math.floor(periodNum / 1000);
-          const teacherIndex = periodNum % 100;
+          const teacherIndex = periodNum % 1000;
 
           const entry: TimeTableData = {
             period,
@@ -260,7 +299,7 @@ export async function fetchTimeTable(
             entry.original = {
               period,
               subject: subList[Math.floor(originalPeriod / 1000)] ?? "",
-              teacher: teacherList[originalPeriod % 100] ?? "",
+              teacher: teacherList[originalPeriod % 1000] ?? "",
             };
           }
 
@@ -271,7 +310,7 @@ export async function fetchTimeTable(
     }
   }
 
-  const homeroomRaw = structuredClone(resp.담임) as number[][];
+  const homeroomRaw = (resp.담임 ?? []) as number[][];
   const homeroomStrings: string[][] = [];
 
   for (let g = 0; g < homeroomRaw.length; g += 1) {

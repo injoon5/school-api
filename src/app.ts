@@ -1,13 +1,9 @@
 import { cors } from "@elysiajs/cors";
 import { openapi } from "@elysiajs/openapi";
 import { openApiPluginConfig } from "./openapi-config.js";
-import {
-  fetchTimeTable,
-  NeisClient,
-  Neispy,
-} from "@timeforschool/client";
+import { fetchTimeTable } from "@timeforschool/client";
 import { Elysia, type Static, t } from "elysia";
-import { CORS_ORIGINS, NEIS_API_KEY } from "./config.js";
+import { API_VERSION, CORS_ORIGINS } from "./config.js";
 import { ApiError, ErrorCode } from "./errors/api-error.js";
 import {
   ApiErrorSchema,
@@ -27,6 +23,7 @@ import {
 } from "./schemas/responses.js";
 import {
   assertSingleSchoolParam,
+  createNeisClient,
   lookupSchoolNameByCode,
   requireSchoolParam,
   resolveSchool,
@@ -34,20 +31,20 @@ import {
 import { omitNullsFromRows } from "./utils/json.js";
 
 const REMOVE_PAREN_PATTERN = /\([^)]*\)/g;
+const BR_TAG_PATTERN = /\s*<br\s*\/?>/g;
 
 const ClassListSchema = t.Array(t.String({ examples: ["1", "2", "3"] }));
 
-function handleRoute<T>(fn: () => Promise<T>): Promise<T> {
-  return fn().catch((error) => {
-    throw ApiError.fromUnknown(error);
-  });
+/** Korean academic year starts in March; Jan/Feb belong to the previous year. */
+function currentAcademicYear(now = new Date()): string {
+  const year = now.getFullYear();
+  return String(now.getMonth() + 1 < 3 ? year - 1 : year);
 }
 
 export const app = new Elysia({ name: "timeforschool" })
   .use(
     cors({
       origin: CORS_ORIGINS,
-      credentials: true,
     }),
   )
   .use(openapi(openApiPluginConfig))
@@ -85,7 +82,7 @@ export const app = new Elysia({ name: "timeforschool" })
     "/",
     () => ({
       name: "TimeForSchool",
-      version: "0.0.1",
+      version: API_VERSION,
       docs: "/docs",
       openapi: "/docs/json",
     }),
@@ -102,13 +99,11 @@ export const app = new Elysia({ name: "timeforschool" })
   )
   .get(
     "/school",
-    ({ query }) =>
-      handleRoute(async () => {
-        requireSchoolParam(query);
-        const client = new NeisClient({ key: NEIS_API_KEY });
-        const schools = await client.schoolInfo({ SCHUL_NM: query.schoolname! });
-        return omitNullsFromRows(schools) as Static<typeof SchoolInfoListSchema>;
-      }),
+    async ({ query }) => {
+      const client = createNeisClient();
+      const schools = await client.schoolInfo({ SCHUL_NM: query.schoolname });
+      return omitNullsFromRows(schools) as Static<typeof SchoolInfoListSchema>;
+    },
     {
       query: t.Object({
         schoolname: SchoolName,
@@ -129,28 +124,33 @@ export const app = new Elysia({ name: "timeforschool" })
   )
   .get(
     "/classes",
-    ({ query }) =>
-      handleRoute(async () => {
-        assertSingleSchoolParam(query);
-        requireSchoolParam(query);
+    async ({ query }) => {
+      assertSingleSchoolParam(query);
+      requireSchoolParam(query);
 
-        const school = await resolveSchool(query);
-        const client = new Neispy({ key: NEIS_API_KEY });
-        const classRows = await client.classInfo({
-          ATPT_OFCDC_SC_CODE: school.ATPT_OFCDC_SC_CODE,
-          SD_SCHUL_CODE: school.SD_SCHUL_CODE,
-          GRADE: String(query.grade),
-        });
+      const school = await resolveSchool(query);
+      const client = createNeisClient();
+      const classRows = await client.classInfo({
+        ATPT_OFCDC_SC_CODE: school.ATPT_OFCDC_SC_CODE,
+        SD_SCHUL_CODE: school.SD_SCHUL_CODE,
+        AY: currentAcademicYear(),
+        GRADE: String(query.grade),
+      });
 
-        return [...new Set(classRows.map((row) => row.CLASS_NM))].sort(
-          (a, b) => {
-            const ai = Number.parseInt(a, 10);
-            const bi = Number.parseInt(b, 10);
-            if (Number.isNaN(ai) || Number.isNaN(bi)) return 0;
-            return ai - bi;
-          },
-        );
-      }),
+      return [...new Set(classRows.map((row) => row.CLASS_NM))].sort((a, b) => {
+        const ai = Number.parseInt(a, 10);
+        const bi = Number.parseInt(b, 10);
+        const aNum = Number.isNaN(ai);
+        const bNum = Number.isNaN(bi);
+        // Numeric class names sort ascending; non-numeric names sort after,
+        // then lexicographically — a total order so results are stable.
+        if (aNum && bNum) return a.localeCompare(b);
+        if (aNum) return 1;
+        if (bNum) return -1;
+        if (ai !== bi) return ai - bi;
+        return a.localeCompare(b);
+      });
+    },
     {
       query: t.Composite([
         SchoolQuery,
@@ -174,61 +174,44 @@ export const app = new Elysia({ name: "timeforschool" })
   )
   .get(
     "/timetable",
-    ({ query }) =>
-      handleRoute(async () => {
-        const schoolname =
-          typeof query.schoolname === "string" ? query.schoolname : undefined;
-        const schoolcode =
-          typeof query.schoolcode === "string" ? query.schoolcode : undefined;
-        assertSingleSchoolParam({ schoolname, schoolcode });
+    async ({ query }) => {
+      const { schoolname, schoolcode } = query;
+      assertSingleSchoolParam({ schoolname, schoolcode });
 
-        const grade = Number(query.grade);
-        const classno = Number(query.classno);
-        const week = Number(query.week ?? 0);
+      const grade = query.grade;
+      const classno = query.classno;
+      const week = query.week ?? 0;
 
-        if (!Number.isInteger(grade) || grade < 1) {
-          throw ApiError.validation("grade must be a positive integer.", {
-            grade: query.grade,
-          });
+      let schoolName = schoolname;
+      if (!schoolName) {
+        if (!schoolcode) {
+          throw ApiError.missingSchoolIdentifier();
         }
-        if (!Number.isInteger(classno) || classno < 1) {
-          throw ApiError.validation("classno must be a positive integer.", {
-            classno: query.classno,
-          });
-        }
+        schoolName = await lookupSchoolNameByCode(schoolcode);
+      }
 
-        let schoolName = schoolname;
-        const schoolCodeParam = schoolcode;
+      const timetable = await fetchTimeTable({
+        schoolName,
+        schoolCode: schoolcode ? Number(schoolcode) : undefined,
+        weekNum: week,
+      });
 
-        if (!schoolName) {
-          if (!schoolCodeParam) {
-            throw ApiError.missingSchoolIdentifier();
-          }
-          schoolName = await lookupSchoolNameByCode(schoolCodeParam);
-        }
+      const weekDays = timetable.timetable[grade]?.[classno]?.slice(1);
+      if (!weekDays?.length) {
+        throw new ApiError(
+          ErrorCode.TIMETABLE_INVALID_GRADE_CLASS,
+          404,
+          "No timetable found for this grade and class.",
+          { grade, classno, schoolname: schoolName },
+        );
+      }
 
-        const timetable = await fetchTimeTable({
-          schoolName,
-          schoolCode: schoolCodeParam ? Number(schoolCodeParam) : undefined,
-          weekNum: week,
-        });
-
-        const weekDays = timetable.timetable[grade]?.[classno]?.slice(1);
-        if (!weekDays?.length) {
-          throw new ApiError(
-            ErrorCode.TIMETABLE_INVALID_GRADE_CLASS,
-            404,
-            "No timetable found for this grade and class.",
-            { grade, classno, schoolname: schoolName },
-          );
-        }
-
-        return {
-          day_time: timetable.dayTime,
-          timetable: weekDays,
-          update_date: timetable.updateDate,
-        } as Static<typeof TimetableResponseSchema>;
-      }),
+      return {
+        day_time: timetable.dayTime,
+        timetable: weekDays,
+        update_date: timetable.updateDate,
+      } as Static<typeof TimetableResponseSchema>;
+    },
     {
       query: t.Composite([
         SchoolQuery,
@@ -255,38 +238,38 @@ export const app = new Elysia({ name: "timeforschool" })
   )
   .get(
     "/lunch",
-    ({ query }) =>
-      handleRoute(async () => {
-        assertSingleSchoolParam(query);
-        requireSchoolParam(query);
+    async ({ query }) => {
+      assertSingleSchoolParam(query);
+      requireSchoolParam(query);
 
-        const school = await resolveSchool(query);
-        const client = new Neispy({ key: NEIS_API_KEY });
-        const meals = await client.mealServiceDietInfo({
-          ATPT_OFCDC_SC_CODE: school.ATPT_OFCDC_SC_CODE,
-          SD_SCHUL_CODE: school.SD_SCHUL_CODE,
-          MLSV_FROM_YMD: query.startdate,
-          MLSV_TO_YMD: query.enddate,
+      const school = await resolveSchool(query);
+      const client = createNeisClient();
+      const meals = await client.mealServiceDietInfo({
+        ATPT_OFCDC_SC_CODE: school.ATPT_OFCDC_SC_CODE,
+        SD_SCHUL_CODE: school.SD_SCHUL_CODE,
+        MLSV_FROM_YMD: query.startdate,
+        MLSV_TO_YMD: query.enddate,
+      });
+
+      if (meals.length === 0) {
+        throw ApiError.neisDataNotFound({
+          endpoint: "mealServiceDietInfo",
+          startdate: query.startdate,
+          enddate: query.enddate,
+          schoolname: school.SCHUL_NM,
         });
+      }
 
-        if (meals.length === 0) {
-          throw ApiError.neisDataNotFound({
-            endpoint: "mealServiceDietInfo",
-            startdate: query.startdate,
-            enddate: query.enddate,
-            schoolname: school.SCHUL_NM,
-          });
-        }
-
-        return omitNullsFromRows(
-          meals.map((item) => ({
-            ...item,
-            DDISH_NM: item.DDISH_NM.replace(REMOVE_PAREN_PATTERN, "")
-              .replaceAll(" <br/>", "\n")
-              .replaceAll("<br/>", "\n"),
-          })),
-        ) as Static<typeof MealListSchema>;
-      }),
+      return omitNullsFromRows(
+        meals.map((item) => ({
+          ...item,
+          DDISH_NM: item.DDISH_NM.replace(REMOVE_PAREN_PATTERN, "").replace(
+            BR_TAG_PATTERN,
+            "\n",
+          ),
+        })),
+      ) as Static<typeof MealListSchema>;
+    },
     {
       query: t.Composite([
         SchoolQuery,
@@ -311,31 +294,30 @@ export const app = new Elysia({ name: "timeforschool" })
   )
   .get(
     "/schedule",
-    ({ query }) =>
-      handleRoute(async () => {
-        assertSingleSchoolParam(query);
-        requireSchoolParam(query);
+    async ({ query }) => {
+      assertSingleSchoolParam(query);
+      requireSchoolParam(query);
 
-        const school = await resolveSchool(query);
-        const client = new Neispy({ key: NEIS_API_KEY });
-        const rows = await client.schoolSchedule({
-          ATPT_OFCDC_SC_CODE: school.ATPT_OFCDC_SC_CODE,
-          SD_SCHUL_CODE: school.SD_SCHUL_CODE,
-          AA_FROM_YMD: query.startdate,
-          AA_TO_YMD: query.enddate,
+      const school = await resolveSchool(query);
+      const client = createNeisClient();
+      const rows = await client.schoolSchedule({
+        ATPT_OFCDC_SC_CODE: school.ATPT_OFCDC_SC_CODE,
+        SD_SCHUL_CODE: school.SD_SCHUL_CODE,
+        AA_FROM_YMD: query.startdate,
+        AA_TO_YMD: query.enddate,
+      });
+
+      if (rows.length === 0) {
+        throw ApiError.neisDataNotFound({
+          endpoint: "SchoolSchedule",
+          startdate: query.startdate,
+          enddate: query.enddate,
+          schoolname: school.SCHUL_NM,
         });
+      }
 
-        if (rows.length === 0) {
-          throw ApiError.neisDataNotFound({
-            endpoint: "SchoolSchedule",
-            startdate: query.startdate,
-            enddate: query.enddate,
-            schoolname: school.SCHUL_NM,
-          });
-        }
-
-        return omitNullsFromRows(rows) as Static<typeof ScheduleListSchema>;
-      }),
+      return omitNullsFromRows(rows) as Static<typeof ScheduleListSchema>;
+    },
     {
       query: t.Composite([
         SchoolQuery,

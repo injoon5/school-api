@@ -7,7 +7,8 @@ export interface SchoolIdentifier {
   schoolcode?: string;
 }
 
-function neis() {
+/** Single place that constructs a NEIS client, so config/options stay consistent. */
+export function createNeisClient(): NeisClient {
   return new NeisClient({ key: NEIS_API_KEY });
 }
 
@@ -35,7 +36,7 @@ export async function resolveSchool(
   assertSingleSchoolParam(params);
   requireSchoolParam(params);
 
-  const client = neis();
+  const client = createNeisClient();
   const rows = params.schoolname
     ? await client.schoolInfo({ SCHUL_NM: params.schoolname })
     : await client.schoolInfo({ SD_SCHUL_CODE: params.schoolcode! });
