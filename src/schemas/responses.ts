@@ -194,7 +194,7 @@ export const TimetablePeriodSchema = t.Object({
   subject: t.String({ examples: ["수학"] }),
   teacher: t.String({
     description:
-      "Teacher name from Comcigan. Empty string when `source=neis` (NEIS does not publish teachers).",
+      "Teacher name from Comcigan. Empty when only NEIS data is available (NEIS does not publish teachers).",
     examples: ["김교사"],
   }),
   replaced: t.Boolean({
@@ -207,7 +207,7 @@ export const TimetablePeriodSchema = t.Object({
 export const TimetableResponseSchema = t.Object({
   day_time: t.Array(t.String({ examples: ["09:00"] }), {
     description:
-      "Period start times from Comcigan. Empty when `source=neis` (NEIS does not publish bell times).",
+      "Period start times from Comcigan. Empty when only NEIS data is available (NEIS does not publish bell times).",
     examples: [["09:00", "09:50", "10:00"]],
   }),
   timetable: t.Array(t.Array(TimetablePeriodSchema), {

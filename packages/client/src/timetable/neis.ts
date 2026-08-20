@@ -153,7 +153,6 @@ export function mapNeisTimetableRows(
 ): TimeTableResult {
   const data: TimeTableData[][][][] = [[]];
   const byGradeClassDay = new Map<string, TimetableRow[]>();
-  const saturdayByClass = new Set<string>();
   let latestLoad = "";
   let schoolYear = Number(rows[0]?.AY);
   if (!Number.isFinite(schoolYear)) schoolYear = Number(meta.mondayYmd.slice(0, 4));
@@ -166,18 +165,17 @@ export function mapNeisTimetableRows(
     const ymd = row.ALL_TI_YMD;
     if (!ymd) continue;
     const weekday = weekdayFromYmd(ymd);
-    if (weekday < 1 || weekday > 6) continue;
+    // Sunday = 0. Saturday NEIS rows are leftover 토요휴업일 — nobody
+    // has Saturday class anymore; skip rather than surface stale days.
+    if (weekday < 1 || weekday > 5) continue;
     const key = `${grade}:${classNo}:${ymd}`;
     const bucket = byGradeClassDay.get(key);
     if (bucket) bucket.push(row);
     else byGradeClassDay.set(key, [row]);
     if (row.LOAD_DTM && row.LOAD_DTM > latestLoad) latestLoad = row.LOAD_DTM;
-    if (weekday === 6) saturdayByClass.add(`${grade}:${classNo}`);
   }
 
-  function lastDayFor(grade: number, classNo: number): number {
-    return saturdayByClass.has(`${grade}:${classNo}`) ? 6 : 5;
-  }
+  const LAST_WEEKDAY = 5;
 
   for (const [key, dayRows] of byGradeClassDay) {
     const [gradeText, classText, ymd] = key.split(":");
@@ -187,8 +185,7 @@ export function mapNeisTimetableRows(
     const weekday = weekdayFromYmd(ymd);
     ensureGrid(data, grade, classNo);
     const days = data[grade][classNo];
-    const lastDay = lastDayFor(grade, classNo);
-    while (days.length <= lastDay) days.push([]);
+    while (days.length <= LAST_WEEKDAY) days.push([]);
     days[weekday] = periodsForDay(dayRows);
   }
 
@@ -196,8 +193,7 @@ export function mapNeisTimetableRows(
     for (let classNo = 1; classNo < data[grade].length; classNo += 1) {
       const days = data[grade][classNo];
       if (!days) continue;
-      const lastDay = lastDayFor(grade, classNo);
-      while (days.length <= lastDay) days.push([]);
+      while (days.length <= LAST_WEEKDAY) days.push([]);
     }
   }
 

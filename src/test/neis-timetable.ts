@@ -9,6 +9,7 @@ import {
   assertTimetableResponse,
   isErrorBody,
   requestJson,
+  type TimetablePeriod,
   type TimetableResponse,
 } from "./helpers.js";
 
@@ -27,12 +28,16 @@ function shapeNotes(label: string, body: TimetableResponse): void {
   );
 }
 
+function isCancelled(period: TimetablePeriod): boolean {
+  return period.replaced && period.subject.length === 0;
+}
+
 async function run(): Promise<void> {
   console.log("Testing NEIS timetable source\n");
 
   const yangjeongComcigan = await requestJson(
     app,
-    `/timetable?grade=${GRADE}&classno=${CLASS_NO}&week=0&schoolname=${encodeURIComponent(YANGJEONG)}`,
+    `/timetable?grade=${GRADE}&classno=${CLASS_NO}&week=0&source=comcigan&schoolname=${encodeURIComponent(YANGJEONG)}`,
   );
   assert(yangjeongComcigan.status === 200, `양정고 comcigan → ${yangjeongComcigan.status}`);
   assert(
@@ -53,6 +58,10 @@ async function run(): Promise<void> {
   );
   assertTimetableResponse(yangjeongNeis.body, { allowEmptyDayTime: true });
   assert(yangjeongNeis.body.day_time.length === 0, "NEIS day_time must be blank");
+  assert(
+    yangjeongNeis.body.timetable.length <= 5,
+    `NEIS Saturday must be dropped, got ${yangjeongNeis.body.timetable.length} days`,
+  );
   for (const day of yangjeongNeis.body.timetable) {
     for (const period of day) {
       assertTimetablePeriod(period);
@@ -62,11 +71,61 @@ async function run(): Promise<void> {
     }
   }
   shapeNotes("양정고 neis", yangjeongNeis.body);
-  console.log("✓ 양정고 comcigan preferred; neis fills the same keys (blanks where NEIS has no data)");
+
+  const yangjeongAuto = await requestJson(
+    app,
+    `/timetable?grade=${GRADE}&classno=${CLASS_NO}&week=0&schoolname=${encodeURIComponent(YANGJEONG)}`,
+  );
+  assert(yangjeongAuto.status === 200, `양정고 auto → ${yangjeongAuto.status}`);
+  assert(
+    !isErrorBody(yangjeongAuto.body),
+    `/timetable auto error: ${JSON.stringify(yangjeongAuto.body)}`,
+  );
+  assertTimetableResponse(yangjeongAuto.body);
+  assert(
+    yangjeongAuto.body.timetable.length <= 5,
+    `auto must not pick up NEIS Saturday, got ${yangjeongAuto.body.timetable.length} days`,
+  );
+  assert(
+    yangjeongAuto.body.day_time.length === yangjeongComcigan.body.day_time.length,
+    "auto keeps Comcigan day_time",
+  );
+
+  const maxDays = Math.min(
+    yangjeongAuto.body.timetable.length,
+    yangjeongComcigan.body.timetable.length,
+    yangjeongNeis.body.timetable.length,
+  );
+  for (let day = 0; day < maxDays; day += 1) {
+    const autoDay = yangjeongAuto.body.timetable[day];
+    const comDay = yangjeongComcigan.body.timetable[day];
+    const neisDay = yangjeongNeis.body.timetable[day];
+    const byCom = new Map(comDay.map((entry) => [entry.period, entry]));
+    const byNeis = new Map(neisDay.map((entry) => [entry.period, entry]));
+    for (const autoPeriod of autoDay) {
+      const com = byCom.get(autoPeriod.period);
+      const neis = byNeis.get(autoPeriod.period);
+      if (com && isCancelled(com)) {
+        assert(autoPeriod.subject === "", "auto keeps Comcigan cancellation");
+        continue;
+      }
+      const names = [com?.subject, neis?.subject].filter(
+        (name): name is string => Boolean(name && name.length > 0),
+      );
+      if (names.length === 0) continue;
+      const shortest = names.reduce((a, b) => (a.length <= b.length ? a : b));
+      assert(
+        autoPeriod.subject === shortest,
+        `day ${day} period ${autoPeriod.period}: expected ${shortest}, got ${autoPeriod.subject}`,
+      );
+    }
+  }
+  shapeNotes("양정고 auto", yangjeongAuto.body);
+  console.log("✓ 양정고 auto: shorter name wins, gaps fill, Saturday dropped, cancellations kept");
 
   const hafsComcigan = await requestJson(
     app,
-    `/timetable?grade=${GRADE}&classno=${CLASS_NO}&week=0&schoolname=${encodeURIComponent(HAFS)}`,
+    `/timetable?grade=${GRADE}&classno=${CLASS_NO}&week=0&source=comcigan&schoolname=${encodeURIComponent(HAFS)}`,
   );
   assert(
     hafsComcigan.status === 404 || hafsComcigan.status === 502,
@@ -77,6 +136,30 @@ async function run(): Promise<void> {
     `✓ 외대부고 comcigan unavailable (${hafsComcigan.body.error.code})`,
   );
 
+  const hafsAuto = await requestJson(
+    app,
+    `/timetable?grade=${GRADE}&classno=${CLASS_NO}&week=0&schoolname=${encodeURIComponent(HAFS)}`,
+  );
+  if (hafsAuto.status === 200 && !isErrorBody(hafsAuto.body)) {
+    assertTimetableResponse(hafsAuto.body, { allowEmptyDayTime: true });
+    assert(
+      hafsAuto.body.timetable.length <= 5,
+      "외대부고 auto must not include NEIS Saturday",
+    );
+    shapeNotes("외대부고 auto this week", hafsAuto.body);
+    console.log("✓ 외대부고 auto fills from NEIS");
+  } else {
+    assert(isErrorBody(hafsAuto.body), "expected structured error for empty week");
+    assert(
+      hafsAuto.body.error.code === "NEIS_DATA_NOT_FOUND" ||
+        hafsAuto.body.error.code === "TIMETABLE_INVALID_GRADE_CLASS",
+      `외대부고 auto this week: ${hafsAuto.body.error.code}`,
+    );
+    console.log(
+      `✓ 외대부고 auto this week empty (${hafsAuto.body.error.code}) — summer break`,
+    );
+  }
+
   const hafsNeis = await requestJson(
     app,
     `/timetable?grade=${GRADE}&classno=${CLASS_NO}&week=0&source=neis&schoolcode=${HAFS_CODE}`,
@@ -85,6 +168,7 @@ async function run(): Promise<void> {
   if (hafsNeis.status === 200 && !isErrorBody(hafsNeis.body)) {
     assertTimetableResponse(hafsNeis.body, { allowEmptyDayTime: true });
     assert(hafsNeis.body.day_time.length === 0, "NEIS day_time must be blank");
+    assert(hafsNeis.body.timetable.length <= 5, "NEIS Saturday dropped");
     shapeNotes("외대부고 neis this week", hafsNeis.body);
     console.log("✓ 외대부고 neis this week");
   } else {
@@ -115,6 +199,7 @@ async function run(): Promise<void> {
   };
   assertTimetableResponse(julyBody, { allowEmptyDayTime: true });
   assert(julyBody.day_time.length === 0, "mapped day_time blank");
+  assert(julyBody.timetable.length <= 5, "July mapper drops Saturday");
   const monday = julyBody.timetable[0] ?? [];
   assert(monday.length > 0, "Monday 20260713 should have periods");
   assert(monday.some((period) => period.subject.includes("미래주제연구")), "July 13 subject");

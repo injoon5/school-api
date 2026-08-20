@@ -40,6 +40,11 @@ Accept: application/json
 
 ###
 
+GET http://127.0.0.1:8000/timetable?grade=1&classno=3&week=0&source=comcigan&schoolname=양정고등학교
+Accept: application/json
+
+###
+
 GET http://127.0.0.1:8000/timetable?grade=1&classno=3&week=0&source=neis&schoolname=양정고등학교
 Accept: application/json
 

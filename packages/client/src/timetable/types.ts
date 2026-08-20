@@ -25,7 +25,7 @@ export interface TimeTableResult {
   homeroomTeachers: string[][];
 }
 
-export type TimetableSource = "comcigan" | "neis";
+export type TimetableSource = "auto" | "comcigan" | "neis";
 
 export interface FetchTimeTableOptions {
   schoolName: string;
@@ -35,12 +35,11 @@ export interface FetchTimeTableOptions {
   /** 0 = current week, 1 = next week */
   weekNum?: number;
   /**
-   * `comcigan` (default, preferred) scrapes 컴시간 — fresher updates, teachers,
-   * bell times, substitutions. `neis` is a fallback for schools that do not
-   * use Comcigan. NEIS is mapped onto the Comcigan result shape; fields the
-   * Open API does not publish are left blank.
+   * `auto` (default) fetches Comcigan and NEIS in parallel and merges:
+   * shorter subject wins, gaps fill from the other source. NEIS Saturday
+   * is dropped (stale 토요휴업일). Pin `comcigan` or `neis` for one upstream.
    */
   source?: TimetableSource;
-  /** NEIS API key; used when `source` is `neis`. */
+  /** NEIS API key; used when `source` is `neis` or `auto`. */
   key?: string;
 }

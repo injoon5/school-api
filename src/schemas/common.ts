@@ -55,9 +55,9 @@ export const Week = t.Optional(
 );
 
 export const TimetableSource = t.Optional(
-  t.Union([t.Literal("comcigan"), t.Literal("neis")], {
+  t.Union([t.Literal("auto"), t.Literal("comcigan"), t.Literal("neis")], {
     description:
-      "Timetable data source. `comcigan` (default) is preferred — 컴시간 updates faster and includes teachers, bell times, and substitutions. Use `neis` only when the school does not publish on Comcigan. NEIS fills the same response shape; `teacher`, `day_time`, and `original` are blank because the Open API does not publish them.",
+      "Timetable source. `auto` (default) fetches Comcigan and NEIS together: shorter subject wins, weekday gaps fill from the other. NEIS Saturday is ignored. Pin `comcigan` or `neis` for a single upstream.",
   }),
 );
 

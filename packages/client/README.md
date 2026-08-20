@@ -3,8 +3,7 @@
 TypeScript client for Korean school data APIs:
 
 - **NEIS Open API** — school profiles, classes, lunch menus, calendars
-- **Comcigan** — weekly class timetables (preferred when the school uses 컴시간)
-- **NEIS timetable** — fallback via `source: "neis"` when the school does not use Comcigan
+- **Comcigan + NEIS timetables** — `fetchTimeTable` defaults to `source: "auto"` (shorter subject wins; weekday gaps fill from the other). Pin `comcigan` or `neis` to call one upstream.
 
 ## Install
 
@@ -82,9 +81,10 @@ import {
 const table = await fetchTimeTable({
   schoolName: "양정고등학교",
   weekNum: 0,
+  key: process.env.NEIS_API_KEY, // used by default `source: "auto"`
 });
 
-const neisTable = await fetchTimeTable({
+const neisOnly = await fetchTimeTable({
   schoolName: "용인한국외국어대학교부설고등학교",
   schoolCode: 7531146,
   weekNum: 0,
@@ -92,11 +92,11 @@ const neisTable = await fetchTimeTable({
   key: process.env.NEIS_API_KEY,
 });
 
-const grade1Class3 = table.timetable[1][3].slice(1); // weekdays only
+const grade1Class3 = table.timetable[1][3].slice(1); // Mon–Fri
 console.log(table.dayTime, table.updateDate);
 ```
 
-NEIS leaves `teacher`, `dayTime`, `homeroomTeachers`, and substitution `original` blank — those fields are not in the Open API. Keep `source` omitted (Comcigan) when the school uses 컴시간; it is updated better. Use `source: "neis"` only as a fallback.
+Default merge: shorter subject wins, missing weekdays/periods fill from the other source, cancelled Comcigan periods stay cancelled. NEIS Saturday (`토요휴업일`) is dropped. NEIS leaves `teacher`, `dayTime`, `homeroomTeachers`, and `original` blank when Comcigan has nothing to overlay.
 
 Subpath import: `@timeforschool/client/timetable`
 

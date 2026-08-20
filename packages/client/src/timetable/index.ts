@@ -5,7 +5,9 @@ import {
   TimetableParseError,
   TimetableSchoolNotFoundError,
 } from "./errors.js";
+import { NeisDataNotFoundError } from "../neis/errors.js";
 import { fetchNeisTimeTable } from "./neis.js";
+import { mergeTimeTableResults } from "./merge.js";
 import type { FetchTimeTableOptions, TimeTableData, TimeTableResult } from "./types.js";
 
 export type {
@@ -22,6 +24,7 @@ export {
   formatYmdDash,
   kstYmd,
 } from "./neis.js";
+export { mergeTimeTableResults, mergePeriod } from "./merge.js";
 export type { FetchNeisTimeTableOptions } from "./neis.js";
 export {
   TimetableAmbiguousSchoolError,
@@ -211,16 +214,11 @@ function getStringList(resp: ComciganResponse, code: string): string[] {
 }
 
 /**
- * Fetch a weekly class timetable from Comcigan (default, preferred), or from
- * NEIS when `source` is `"neis"` (fallback for schools that do not use 컴시간).
+ * Fetch a weekly class timetable from Comcigan (컴시간).
  */
-export async function fetchTimeTable(
+async function fetchComciganTimeTable(
   options: FetchTimeTableOptions,
 ): Promise<TimeTableResult> {
-  if ((options.source ?? "comcigan") === "neis") {
-    return fetchNeisTimeTable(options);
-  }
-
   const weekNum = options.weekNum ?? 0;
   if (weekNum !== 0 && weekNum !== 1) {
     throw new TimetableInvalidWeekError(weekNum);
@@ -349,4 +347,49 @@ export async function fetchTimeTable(
     timetable: data,
     homeroomTeachers: homeroomStrings,
   };
+}
+
+async function fetchMergedTimeTable(
+  options: FetchTimeTableOptions,
+): Promise<TimeTableResult> {
+  const [comcigan, neis] = await Promise.allSettled([
+    fetchComciganTimeTable(options),
+    fetchNeisTimeTable(options),
+  ]);
+
+  const preferred = comcigan.status === "fulfilled" ? comcigan.value : null;
+  const fallback = neis.status === "fulfilled" ? neis.value : null;
+
+  if (preferred && fallback) return mergeTimeTableResults(preferred, fallback);
+  if (preferred) return preferred;
+  if (fallback) return fallback;
+
+  if (neis.status === "rejected" && neis.reason instanceof NeisDataNotFoundError) {
+    throw neis.reason;
+  }
+  if (comcigan.status === "rejected") throw comcigan.reason;
+  throw neis.status === "rejected" ? neis.reason : new Error("Timetable merge failed");
+}
+
+/**
+ * Weekly class timetable. Default `source` is `auto`: Comcigan + NEIS in
+ * parallel, shorter subject wins, weekday gaps fill from the other. NEIS
+ * Saturday is dropped. Pin `comcigan` or `neis` to call a single upstream.
+ */
+export async function fetchTimeTable(
+  options: FetchTimeTableOptions,
+): Promise<TimeTableResult> {
+  const source = options.source ?? "auto";
+  switch (source) {
+    case "neis":
+      return fetchNeisTimeTable(options);
+    case "comcigan":
+      return fetchComciganTimeTable(options);
+    case "auto":
+      return fetchMergedTimeTable(options);
+    default: {
+      const exhaustive: never = source;
+      throw new Error(`Unhandled timetable source: ${String(exhaustive)}`);
+    }
+  }
 }

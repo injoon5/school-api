@@ -9,7 +9,7 @@ The [`@timeforschool/client`](https://www.npmjs.com/package/@timeforschool/clien
 
 The production API at [api.timefor.school](https://api.timefor.school) mirrors these capabilities. Pass **`schoolname`** or **`schoolcode`** on endpoints that need a school—never both. No route defaults to a particular school (including `GET /school`, which requires `schoolname`).
 
-`GET /timetable` defaults to Comcigan and you should keep it that way when the school uses 컴시간 (fresher updates, teachers, substitutions, bell times). Pass **`source=neis`** only as a fallback.
+`GET /timetable` defaults to **`source=auto`**: Comcigan and NEIS in parallel, shorter subject wins, weekday gaps fill from the other. Pin **`source=comcigan`** or **`source=neis`** to call one upstream. NEIS Saturday is ignored.
 
 ## Subpath exports
 
@@ -37,6 +37,7 @@ const school = schools[0];
 const table = await fetchTimeTable({
   schoolName: school.SCHUL_NM,
   weekNum: 0,
+  key: process.env.NEIS_API_KEY,
 });
 ```
 

@@ -1,10 +1,10 @@
 import { API_VERSION } from "./config.js";
 
 const API_DESCRIPTION = `
-TimeForSchool wraps **Comcigan** (weekly class timetables — preferred when the school uses 컴시간) and the Korean **NEIS Open API** (school info, classes, meals, calendar, and a timetable fallback).
+TimeForSchool wraps **Comcigan** and the Korean **NEIS Open API** (school info, classes, meals, calendar, timetables).
 
 ### Timetable source
-\`GET /timetable\` defaults to Comcigan. Use \`source=neis\` only if the school does not publish on 컴시간. Comcigan is updated more often and includes teachers, bell times, and substitutions. NEIS responses use the same JSON shape with those fields left blank.
+\`GET /timetable\` defaults to \`source=auto\`: both upstreams in parallel, shorter subject name wins, missing weekdays/periods fill from the other. NEIS Saturday is ignored. Pin \`source=comcigan\` or \`source=neis\` to call only one.
 
 ### School identifier
 Use **either** \`schoolname\` **or** \`schoolcode\` (NEIS 7-digit code)—never both. No endpoint defaults to a particular school; \`GET /school\` requires \`schoolname\`.
@@ -39,7 +39,7 @@ export const openApiPluginConfig = {
       { name: "Meta", description: "Service metadata" },
       { name: "School", description: "NEIS school profile" },
       { name: "Classes", description: "Class numbers by grade" },
-      { name: "Timetable", description: "Weekly timetable (Comcigan preferred; NEIS fallback)" },
+      { name: "Timetable", description: "Weekly timetable (auto merge; pin comcigan or neis)" },
       { name: "Lunch", description: "Meal menus (NEIS)" },
       { name: "Schedule", description: "School calendar (NEIS)" },
     ],
@@ -54,7 +54,7 @@ export const openApiPluginConfig = {
     metadata: {
       title: "TimeForSchool API",
       description:
-        "NEIS school data and Comcigan timetables (NEIS timetable fallback) for Korean schools.",
+        "NEIS school data and Comcigan/NEIS timetables (auto-merged by default) for Korean schools.",
     },
     servers: [...OPENAPI_SERVERS],
   },

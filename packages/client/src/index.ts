@@ -37,6 +37,7 @@ export {
   fetchTimeTable,
   fetchNeisTimeTable,
   mapNeisTimetableRows,
+  mergeTimeTableResults,
   weekYmdRange,
   TimetableAmbiguousSchoolError,
   TimetableError,
