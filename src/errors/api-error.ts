@@ -13,7 +13,6 @@ export const ErrorCode = {
   CONFLICTING_SCHOOL_PARAMS: "CONFLICTING_SCHOOL_PARAMS",
   MISSING_SCHOOL_IDENTIFIER: "MISSING_SCHOOL_IDENTIFIER",
   SCHOOL_NOT_FOUND: "SCHOOL_NOT_FOUND",
-  SCHOOL_AMBIGUOUS: "SCHOOL_AMBIGUOUS",
   NEIS_DATA_NOT_FOUND: "NEIS_DATA_NOT_FOUND",
   NEIS_UPSTREAM: "NEIS_UPSTREAM_ERROR",
   TIMETABLE_SCHOOL_NOT_FOUND: "TIMETABLE_SCHOOL_NOT_FOUND",
@@ -80,18 +79,6 @@ export class ApiError extends Error {
       400,
       "A school identifier is required.",
       { requiredOneOf: ["schoolname", "schoolcode"] },
-    );
-  }
-
-  static schoolAmbiguous(
-    identifier: string,
-    details: Record<string, unknown>,
-  ): ApiError {
-    return new ApiError(
-      ErrorCode.SCHOOL_AMBIGUOUS,
-      409,
-      "Multiple schools matched. Pass schoolcode to disambiguate.",
-      { identifier, ...details },
     );
   }
 

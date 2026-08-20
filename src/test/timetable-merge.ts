@@ -161,10 +161,14 @@ function run(): void {
 
   const high = { ...school, SCHUL_NM: "양정고등학교", SD_SCHUL_CODE: "1" } as SchoolInfoRow;
   const middle = { ...school, SCHUL_NM: "양정중학교", SD_SCHUL_CODE: "2" } as SchoolInfoRow;
+  const seoul = { ...school, SCHUL_NM: "양정고등학교", SD_SCHUL_CODE: "7010208" } as SchoolInfoRow;
+  const busan = { ...school, SCHUL_NM: "양정고등학교", SD_SCHUL_CODE: "7150152" } as SchoolInfoRow;
   const byName = pickSchoolRow([high, middle], { schoolName: "양정고등학교" });
   assert(byName.ok && byName.school.SD_SCHUL_CODE === "1", "exact NEIS name wins");
+  const firstTwin = pickSchoolRow([seoul, busan], { schoolName: "양정고등학교" });
+  assert(firstTwin.ok && firstTwin.school.SD_SCHUL_CODE === "7010208", "duplicate names keep first row");
   const partial = pickSchoolRow([high, middle], { schoolName: "양정" });
-  assert(!partial.ok && partial.reason === "ambiguous", "partial NEIS name is ambiguous");
+  assert(partial.ok && partial.school.SD_SCHUL_CODE === "1", "partial name keeps first NEIS row");
   const byCode = pickSchoolRow([high, middle], { schoolCode: "2" });
   assert(byCode.ok && byCode.school.SCHUL_NM === "양정중학교", "exact NEIS code wins");
 

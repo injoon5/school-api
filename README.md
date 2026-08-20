@@ -119,7 +119,6 @@ Errors use a consistent JSON shape and HTTP status code:
 | `CONFLICTING_SCHOOL_PARAMS` | 400 | Both `schoolname` and `schoolcode` sent |
 | `MISSING_SCHOOL_IDENTIFIER` | 400 | Neither `schoolname` nor `schoolcode` sent |
 | `SCHOOL_NOT_FOUND` | 404 | NEIS has no matching school |
-| `SCHOOL_AMBIGUOUS` | 409 | Multiple NEIS schools matched—use `schoolcode` |
 | `NEIS_DATA_NOT_FOUND` | 404 | NEIS returned no rows for the date range |
 | `TIMETABLE_SCHOOL_NOT_FOUND` | 404 | Neither Comcigan nor NEIS found the school |
 | `TIMETABLE_INVALID_GRADE_CLASS` | 404 | No timetable for grade/class |

@@ -3,7 +3,6 @@ import { NeisDataNotFoundError } from "../neis/errors.js";
 import { pickSchoolRow } from "../neis/pick-school.js";
 import type { SchoolInfoRow, TimetableRow } from "../neis/types.js";
 import {
-  TimetableAmbiguousSchoolError,
   TimetableInvalidWeekError,
   TimetableSchoolNotFoundError,
 } from "./errors.js";
@@ -233,9 +232,6 @@ async function resolveSchool(
     schoolCode,
   });
   if (picked.ok) return picked.school;
-  if (picked.reason === "ambiguous") {
-    throw new TimetableAmbiguousSchoolError(options.schoolName);
-  }
   throw new TimetableSchoolNotFoundError(options.schoolName);
 }
 

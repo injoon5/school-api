@@ -57,11 +57,6 @@ export async function resolveSchool(
     schoolCode: params.schoolcode,
   });
   if (picked.ok) return picked.school;
-  if (picked.reason === "ambiguous") {
-    throw ApiError.schoolAmbiguous(params.schoolname ?? params.schoolcode ?? "", {
-      matches: picked.matches.map((row) => row.SCHUL_NM),
-    });
-  }
   throw ApiError.schoolNotFound({
     ...(params.schoolname ? { schoolname: params.schoolname } : {}),
     ...(params.schoolcode ? { schoolcode: params.schoolcode } : {}),

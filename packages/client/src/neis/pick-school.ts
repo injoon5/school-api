@@ -7,33 +7,32 @@ export type SchoolQuery = {
 
 export type PickSchoolResult =
   | { ok: true; school: SchoolInfoRow }
-  | { ok: false; reason: "empty" | "ambiguous"; matches: SchoolInfoRow[] };
+  | { ok: false; reason: "empty" };
 
 /**
- * One school-identity rule for NEIS rows: exact code, then exact name,
- * then a single leftover row. Multiple leftovers are ambiguous — never rows[0].
+ * NEIS school pick: exact code, else first exact name, else the first row
+ * NEIS returned. Duplicate official names (서울/부산 양정고) keep order.
  */
 export function pickSchoolRow(
   rows: SchoolInfoRow[],
   query: SchoolQuery = {},
 ): PickSchoolResult {
-  if (rows.length === 0) return { ok: false, reason: "empty", matches: [] };
+  if (rows.length === 0) return { ok: false, reason: "empty" };
 
   const code = query.schoolCode?.trim();
   if (code) {
-    const exact = rows.filter((row) => row.SD_SCHUL_CODE === code);
-    if (exact.length === 1) return { ok: true, school: exact[0] };
-    if (exact.length === 0) return { ok: false, reason: "empty", matches: [] };
-    return { ok: false, reason: "ambiguous", matches: exact };
+    const exact = rows.find((row) => row.SD_SCHUL_CODE === code);
+    if (!exact) return { ok: false, reason: "empty" };
+    return { ok: true, school: exact };
   }
 
   const name = query.schoolName?.trim();
   if (name) {
-    const exact = rows.filter((row) => row.SCHUL_NM === name);
-    if (exact.length === 1) return { ok: true, school: exact[0] };
-    if (exact.length > 1) return { ok: false, reason: "ambiguous", matches: exact };
+    const exact = rows.find((row) => row.SCHUL_NM === name);
+    if (exact) return { ok: true, school: exact };
   }
 
-  if (rows.length === 1) return { ok: true, school: rows[0] };
-  return { ok: false, reason: "ambiguous", matches: rows };
+  const first = rows[0];
+  if (!first) return { ok: false, reason: "empty" };
+  return { ok: true, school: first };
 }
