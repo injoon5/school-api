@@ -10,6 +10,9 @@ import {
   mapNeisTimetableRows,
   mergePeriod,
   mergeTimeTableResults,
+  pickMergedTimeTable,
+  TimetableAmbiguousSchoolError,
+  TimetableSchoolNotFoundError,
   type TimeTableData,
   type TimeTableResult,
 } from "@timeforschool/client/timetable";
@@ -171,6 +174,26 @@ function run(): void {
   assert(partial.ok && partial.school.SD_SCHUL_CODE === "1", "partial name keeps first NEIS row");
   const byCode = pickSchoolRow([high, middle], { schoolCode: "2" });
   assert(byCode.ok && byCode.school.SCHUL_NM === "양정중학교", "exact NEIS code wins");
+
+  const neisOnly = result(classWeek([[], [period({ period: 1, subject: "국어" })]]));
+  try {
+    pickMergedTimeTable(
+      { status: "rejected", reason: new TimetableAmbiguousSchoolError("양정고등학교") },
+      { status: "fulfilled", value: neisOnly },
+    );
+    assert(false, "Comcigan 409 must win over NEIS success");
+  } catch (error) {
+    assert(
+      error instanceof TimetableAmbiguousSchoolError,
+      "auto keeps TIMETABLE_AMBIGUOUS_SCHOOL when Comcigan is ambiguous",
+    );
+  }
+
+  const filledFromNeis = pickMergedTimeTable(
+    { status: "rejected", reason: new TimetableSchoolNotFoundError("용인한국외국어대학교부설고등학교") },
+    { status: "fulfilled", value: neisOnly },
+  );
+  assert(filledFromNeis.schoolName === "양정고등학교", "Comcigan 404 falls through to NEIS");
 
   console.log("✓ timetable merge + school pick + NEIS Saturday drop");
 }

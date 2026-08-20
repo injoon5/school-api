@@ -33,31 +33,41 @@ function assertWeekNum(weekNum: number): void {
   }
 }
 
+/**
+ * Combine Comcigan + NEIS `allSettled` results.
+ * Comcigan name collisions stay 409 even when NEIS succeeded.
+ */
+export function pickMergedTimeTable(
+  comcigan: PromiseSettledResult<TimeTableResult>,
+  neis: PromiseSettledResult<TimeTableResult>,
+): TimeTableResult {
+  const comciganErr = comcigan.status === "rejected" ? comcigan.reason : undefined;
+  const neisErr = neis.status === "rejected" ? neis.reason : undefined;
+
+  if (comciganErr instanceof TimetableAmbiguousSchoolError) throw comciganErr;
+
+  if (comcigan.status === "fulfilled" && neis.status === "fulfilled") {
+    return mergeTimeTableResults(comcigan.value, neis.value);
+  }
+  if (comcigan.status === "fulfilled") return comcigan.value;
+  if (neis.status === "fulfilled") return neis.value;
+
+  if (neisErr instanceof TimetableAmbiguousSchoolError) throw neisErr;
+  // Empty week after the school resolved — not a missing school.
+  if (neisErr instanceof NeisDataNotFoundError) throw neisErr;
+  if (comciganErr instanceof TimetableSchoolNotFoundError) throw comciganErr;
+  if (neisErr instanceof TimetableSchoolNotFoundError) throw neisErr;
+  if (comciganErr !== undefined) throw comciganErr;
+  throw neisErr ?? new Error("Timetable merge failed");
+}
+
 function fetchMergedTimeTable(
   options: FetchTimeTableOptions,
 ): Promise<TimeTableResult> {
   return Promise.allSettled([
     fetchComciganTimeTable(options),
     fetchNeisTimeTable(options),
-  ]).then(([comcigan, neis]) => {
-    if (comcigan.status === "fulfilled" && neis.status === "fulfilled") {
-      return mergeTimeTableResults(comcigan.value, neis.value);
-    }
-    if (comcigan.status === "fulfilled") return comcigan.value;
-    if (neis.status === "fulfilled") return neis.value;
-
-    const comciganErr = comcigan.status === "rejected" ? comcigan.reason : undefined;
-    const neisErr = neis.status === "rejected" ? neis.reason : undefined;
-
-    if (comciganErr instanceof TimetableAmbiguousSchoolError) throw comciganErr;
-    if (neisErr instanceof TimetableAmbiguousSchoolError) throw neisErr;
-    // Empty week after the school resolved — not a missing school.
-    if (neisErr instanceof NeisDataNotFoundError) throw neisErr;
-    if (comciganErr instanceof TimetableSchoolNotFoundError) throw comciganErr;
-    if (neisErr instanceof TimetableSchoolNotFoundError) throw neisErr;
-    if (comciganErr !== undefined) throw comciganErr;
-    throw neisErr ?? new Error("Timetable merge failed");
-  });
+  ]).then(([comcigan, neis]) => pickMergedTimeTable(comcigan, neis));
 }
 
 /**

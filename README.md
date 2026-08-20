@@ -122,7 +122,7 @@ Errors use a consistent JSON shape and HTTP status code:
 | `NEIS_DATA_NOT_FOUND` | 404 | NEIS returned no rows for the date range |
 | `TIMETABLE_SCHOOL_NOT_FOUND` | 404 | Neither Comcigan nor NEIS found the school |
 | `TIMETABLE_INVALID_GRADE_CLASS` | 404 | No timetable for grade/class |
-| `TIMETABLE_AMBIGUOUS_SCHOOL` | 409 | Multiple timetable school matches—use `schoolcode` |
+| `TIMETABLE_AMBIGUOUS_SCHOOL` | 409 | Multiple Comcigan matches—use `schoolcode`. `source=auto` still 409s if Comcigan is ambiguous. |
 | `NEIS_UPSTREAM_ERROR` | 502 | NEIS API failure |
 | `TIMETABLE_UPSTREAM_ERROR` | 502 | Comcigan fetch/parse failure |
 | `INTERNAL_ERROR` | 500 | Unexpected error |
