@@ -1,21 +1,19 @@
-import type { NeisClient } from "../neis/client.js";
-import { NeisClient as NeisClientCtor } from "../neis/client.js";
+import { NeisClient } from "../neis/client.js";
+import { NeisDataNotFoundError } from "../neis/errors.js";
+import { pickSchoolRow } from "../neis/pick-school.js";
 import type { SchoolInfoRow, TimetableRow } from "../neis/types.js";
-import { TimetableInvalidWeekError, TimetableSchoolNotFoundError } from "./errors.js";
+import {
+  TimetableAmbiguousSchoolError,
+  TimetableInvalidWeekError,
+  TimetableSchoolNotFoundError,
+} from "./errors.js";
 import type { FetchTimeTableOptions, TimeTableData, TimeTableResult } from "./types.js";
 
 const KST = "Asia/Seoul";
 
 export interface FetchNeisTimeTableOptions extends FetchTimeTableOptions {
-  /** NEIS client. Created from `key` when omitted. */
-  client?: NeisClient;
-  /** NEIS API key used when `client` is omitted. */
-  key?: string;
-  /** Pre-resolved school row. Skips schoolInfo lookup. */
-  school?: SchoolInfoRow;
   /**
-   * Inclusive YYYYMMDD range. When set, `weekNum` is ignored.
-   * Useful for tests and for callers who already computed the week.
+   * Inclusive YYYYMMDD range. When both are set, `weekNum` is ignored.
    */
   fromYmd?: string;
   toYmd?: string;
@@ -218,20 +216,27 @@ async function resolveSchool(
   if (options.school) return options.school;
 
   const schoolCode = options.schoolCode ? String(options.schoolCode) : undefined;
-  const rows = schoolCode
-    ? await client.schoolInfo({ SD_SCHUL_CODE: schoolCode })
-    : await client.schoolInfo({ SCHUL_NM: options.schoolName });
-
-  if (rows.length === 0) {
-    throw new TimetableSchoolNotFoundError(options.schoolName);
+  let rows: SchoolInfoRow[];
+  try {
+    rows = schoolCode
+      ? await client.schoolInfo({ SD_SCHUL_CODE: schoolCode })
+      : await client.schoolInfo({ SCHUL_NM: options.schoolName });
+  } catch (error) {
+    if (error instanceof NeisDataNotFoundError) {
+      throw new TimetableSchoolNotFoundError(options.schoolName);
+    }
+    throw error;
   }
 
-  if (schoolCode) {
-    const exact = rows.find((row) => row.SD_SCHUL_CODE === schoolCode);
-    if (exact) return exact;
+  const picked = pickSchoolRow(rows, {
+    schoolName: options.schoolName,
+    schoolCode,
+  });
+  if (picked.ok) return picked.school;
+  if (picked.reason === "ambiguous") {
+    throw new TimetableAmbiguousSchoolError(options.schoolName);
   }
-
-  return rows[0];
+  throw new TimetableSchoolNotFoundError(options.schoolName);
 }
 
 /**
@@ -250,8 +255,7 @@ export async function fetchNeisTimeTable(
     throw new TimetableInvalidWeekError(weekNum);
   }
 
-  const client =
-    options.client ?? new NeisClientCtor({ key: options.key });
+  const client = options.client ?? new NeisClient({ key: options.key });
   const school = await resolveSchool(client, options);
   const range =
     options.fromYmd && options.toYmd

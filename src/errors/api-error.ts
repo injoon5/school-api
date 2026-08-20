@@ -1,5 +1,6 @@
 import {
   NeisDataNotFoundError,
+  NeisException,
   NeisHttpException,
   TimetableAmbiguousSchoolError,
   TimetableInvalidWeekError,
@@ -12,6 +13,7 @@ export const ErrorCode = {
   CONFLICTING_SCHOOL_PARAMS: "CONFLICTING_SCHOOL_PARAMS",
   MISSING_SCHOOL_IDENTIFIER: "MISSING_SCHOOL_IDENTIFIER",
   SCHOOL_NOT_FOUND: "SCHOOL_NOT_FOUND",
+  SCHOOL_AMBIGUOUS: "SCHOOL_AMBIGUOUS",
   NEIS_DATA_NOT_FOUND: "NEIS_DATA_NOT_FOUND",
   NEIS_UPSTREAM: "NEIS_UPSTREAM_ERROR",
   TIMETABLE_SCHOOL_NOT_FOUND: "TIMETABLE_SCHOOL_NOT_FOUND",
@@ -81,6 +83,18 @@ export class ApiError extends Error {
     );
   }
 
+  static schoolAmbiguous(
+    identifier: string,
+    details: Record<string, unknown>,
+  ): ApiError {
+    return new ApiError(
+      ErrorCode.SCHOOL_AMBIGUOUS,
+      409,
+      "Multiple schools matched. Pass schoolcode to disambiguate.",
+      { identifier, ...details },
+    );
+  }
+
   static schoolNotFound(identifier: Record<string, string>): ApiError {
     return new ApiError(
       ErrorCode.SCHOOL_NOT_FOUND,
@@ -113,7 +127,7 @@ export class ApiError extends Error {
       return new ApiError(
         ErrorCode.TIMETABLE_SCHOOL_NOT_FOUND,
         404,
-        "Comcigan could not find this school. Check the name or use schoolcode.",
+        "No school matched this name. Check the name or use schoolcode.",
         { schoolname: error.schoolName },
       );
     }
@@ -148,6 +162,12 @@ export class ApiError extends Error {
       return new ApiError(ErrorCode.NEIS_UPSTREAM, 502, "NEIS API request failed.", {
         upstream: error.message,
         code: error.code,
+      });
+    }
+
+    if (error instanceof NeisException) {
+      return new ApiError(ErrorCode.NEIS_UPSTREAM, 502, "NEIS API request failed.", {
+        upstream: error.message,
       });
     }
 

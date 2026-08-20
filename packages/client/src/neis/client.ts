@@ -1,4 +1,4 @@
-import { raiseForNeisResult } from "./errors.js";
+import { NeisException, NeisHttpException, raiseForNeisResult } from "./errors.js";
 import type {
   AcaInsTiInfoParams,
   AcaInsTiInfoRow,
@@ -84,7 +84,9 @@ export function timetableKindFromSchool(
   if (kind.includes("중학")) return "mis";
   if (kind.includes("특수")) return "sps";
   if (kind.includes("고등")) return "his";
-  return "his";
+  throw new NeisException(
+    `Unsupported SCHUL_KND_SC_NM: ${schoolKindName ?? "(missing)"}`,
+  );
 }
 
 /**
@@ -128,7 +130,10 @@ export class NeisClient {
     });
 
     if (!response.ok) {
-      throw new Error(`NEIS HTTP ${response.status}: ${response.statusText}`);
+      throw new NeisHttpException(
+        `HTTP-${response.status}`,
+        response.statusText || "NEIS request failed",
+      );
     }
 
     const data = (await response.json()) as NeisApiResponse<T> & {
@@ -244,20 +249,11 @@ export class NeisClient {
     params: TimetableParams,
   ): Promise<TimetableRow[]> {
     const kind = timetableKindFromSchool(schoolKindName);
-    switch (kind) {
-      case "els":
-        return this.elsTimetable(params);
-      case "mis":
-        return this.misTimetable(params);
-      case "his":
-        return this.hisTimetable(params);
-      case "sps":
-        return this.spsTimetable(params);
-      default: {
-        const exhaustive: never = kind;
-        throw new Error(`Unhandled timetable kind: ${String(exhaustive)}`);
-      }
-    }
+    return this.requestRows<TimetableRow>(
+      this.timetableEndpoint(kind, params),
+      `${kind}Timetable`,
+      params,
+    );
   }
 
   schoolMajorinfo(params: SchoolMajorInfoParams): Promise<SchoolMajorInfoRow[]> {
@@ -280,9 +276,3 @@ export class NeisClient {
     return this.requestRows<TiClrmInfoRow>("/tiClrminfo", "tiClrminfo", params);
   }
 }
-
-/** @deprecated Use {@link NeisClient} */
-export const Neispy = NeisClient;
-
-/** @deprecated Use {@link NeisClientOptions} */
-export type NeispyOptions = NeisClientOptions;

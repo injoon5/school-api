@@ -1,3 +1,6 @@
+import type { NeisClient } from "../neis/client.js";
+import type { SchoolInfoRow } from "../neis/types.js";
+
 export interface Lecture {
   period: number;
   subject: string;
@@ -42,4 +45,8 @@ export interface FetchTimeTableOptions {
   source?: TimetableSource;
   /** NEIS API key; used when `source` is `neis` or `auto`. */
   key?: string;
+  /** Reuse an existing NEIS client (avoids a second construction on the HTTP path). */
+  client?: NeisClient;
+  /** Pre-resolved NEIS school row. Skips schoolInfo when set. */
+  school?: SchoolInfoRow;
 }

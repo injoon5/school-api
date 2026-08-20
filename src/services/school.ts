@@ -1,4 +1,4 @@
-import { NeisClient, type SchoolInfoRow } from "@timeforschool/client";
+import { NeisClient, NeisDataNotFoundError, pickSchoolRow, type SchoolInfoRow } from "@timeforschool/client";
 import { NEIS_API_KEY } from "../config.js";
 import { ApiError } from "../errors/api-error.js";
 
@@ -32,29 +32,38 @@ export function requireSchoolParam({
 
 export async function resolveSchool(
   params: SchoolIdentifier,
+  client: NeisClient = createNeisClient(),
 ): Promise<SchoolInfoRow> {
   assertSingleSchoolParam(params);
   requireSchoolParam(params);
 
-  const client = createNeisClient();
-  const rows = params.schoolname
-    ? await client.schoolInfo({ SCHUL_NM: params.schoolname })
-    : await client.schoolInfo({ SD_SCHUL_CODE: params.schoolcode! });
-
-  const school = rows[0];
-  if (!school) {
-    throw ApiError.schoolNotFound({
-      ...(params.schoolname ? { schoolname: params.schoolname } : {}),
-      ...(params.schoolcode ? { schoolcode: params.schoolcode } : {}),
-    });
+  let rows: SchoolInfoRow[];
+  try {
+    rows = params.schoolname
+      ? await client.schoolInfo({ SCHUL_NM: params.schoolname })
+      : await client.schoolInfo({ SD_SCHUL_CODE: params.schoolcode ?? "" });
+  } catch (error) {
+    if (error instanceof NeisDataNotFoundError) {
+      throw ApiError.schoolNotFound({
+        ...(params.schoolname ? { schoolname: params.schoolname } : {}),
+        ...(params.schoolcode ? { schoolcode: params.schoolcode } : {}),
+      });
+    }
+    throw error;
   }
 
-  return school;
-}
-
-export async function lookupSchoolNameByCode(
-  schoolcode: string,
-): Promise<string> {
-  const school = await resolveSchool({ schoolcode });
-  return school.SCHUL_NM;
+  const picked = pickSchoolRow(rows, {
+    schoolName: params.schoolname,
+    schoolCode: params.schoolcode,
+  });
+  if (picked.ok) return picked.school;
+  if (picked.reason === "ambiguous") {
+    throw ApiError.schoolAmbiguous(params.schoolname ?? params.schoolcode ?? "", {
+      matches: picked.matches.map((row) => row.SCHUL_NM),
+    });
+  }
+  throw ApiError.schoolNotFound({
+    ...(params.schoolname ? { schoolname: params.schoolname } : {}),
+    ...(params.schoolcode ? { schoolcode: params.schoolcode } : {}),
+  });
 }

@@ -2,13 +2,17 @@
  * Unit tests for Comcigan + NEIS timetable merge (no network).
  */
 import {
+  pickSchoolRow,
+  type SchoolInfoRow,
+  type TimetableRow,
+} from "@timeforschool/client";
+import {
+  mapNeisTimetableRows,
   mergePeriod,
   mergeTimeTableResults,
-} from "../../packages/client/src/timetable/merge.js";
-import type {
-  TimeTableData,
-  TimeTableResult,
-} from "../../packages/client/src/timetable/types.js";
+  type TimeTableData,
+  type TimeTableResult,
+} from "@timeforschool/client/timetable";
 import { assert } from "./helpers.js";
 
 function period(
@@ -99,12 +103,11 @@ function run(): void {
   const wedNeis = [period({ period: 1, subject: "여름방학" })];
   const thuNeis = [period({ period: 1, subject: "공영B" })];
   const friNeis = [period({ period: 1, subject: "체육" })];
-  const satNeis = [period({ period: 1, subject: "토요휴업일" })];
 
   const merged = mergeTimeTableResults(
     result(classWeek([sun, monCom, tueCom, wedCom, thuCom, friCom])),
     result(
-      classWeek([sun, monNeis, tueNeis, wedNeis, thuNeis, friNeis, satNeis]),
+      classWeek([sun, monNeis, tueNeis, wedNeis, thuNeis, friNeis]),
       { dayTime: [], updateDate: "2026-08-17", homeroomTeachers: [] },
     ),
   );
@@ -120,7 +123,52 @@ function run(): void {
   assert(week[5][0].subject === "체육", "Friday tie keeps Comcigan");
   assert(merged.dayTime[0] === "1(08:10)", "Comcigan bell times kept");
 
-  console.log("✓ timetable merge: shorter name, fill gaps, skip NEIS Saturday, keep cancellations");
+  const school = {
+    ATPT_OFCDC_SC_CODE: "B10",
+    ATPT_OFCDC_SC_NM: "서울특별시교육청",
+    LOAD_DTM: "",
+    SD_SCHUL_CODE: "7010208",
+    SCHUL_NM: "양정고등학교",
+    SCHUL_KND_SC_NM: "고등학교",
+  } as SchoolInfoRow;
+
+  function neisRow(ymd: string, subject: string): TimetableRow {
+    return {
+      ATPT_OFCDC_SC_CODE: "B10",
+      ATPT_OFCDC_SC_NM: "서울특별시교육청",
+      LOAD_DTM: "20260820120000",
+      SD_SCHUL_CODE: "7010208",
+      SCHUL_NM: "양정고등학교",
+      AY: "2026",
+      SEM: "2",
+      ALL_TI_YMD: ymd,
+      GRADE: "1",
+      CLASS_NM: "1",
+      PERIO: "1",
+      ITRT_CNTNT: subject,
+    };
+  }
+
+  const mapped = mapNeisTimetableRows(
+    [neisRow("20260817", "국어"), neisRow("20260822", "토요휴업일")],
+    { school, mondayYmd: "20260817" },
+  );
+  assert(
+    (mapped.timetable[1]?.[1]?.length ?? 0) <= 6,
+    "NEIS mapper drops Saturday 토요휴업일",
+  );
+  assert(mapped.timetable[1][1][6] === undefined, "no Saturday day index");
+
+  const high = { ...school, SCHUL_NM: "양정고등학교", SD_SCHUL_CODE: "1" } as SchoolInfoRow;
+  const middle = { ...school, SCHUL_NM: "양정중학교", SD_SCHUL_CODE: "2" } as SchoolInfoRow;
+  const byName = pickSchoolRow([high, middle], { schoolName: "양정고등학교" });
+  assert(byName.ok && byName.school.SD_SCHUL_CODE === "1", "exact NEIS name wins");
+  const partial = pickSchoolRow([high, middle], { schoolName: "양정" });
+  assert(!partial.ok && partial.reason === "ambiguous", "partial NEIS name is ambiguous");
+  const byCode = pickSchoolRow([high, middle], { schoolCode: "2" });
+  assert(byCode.ok && byCode.school.SCHUL_NM === "양정중학교", "exact NEIS code wins");
+
+  console.log("✓ timetable merge + school pick + NEIS Saturday drop");
 }
 
 run();

@@ -70,10 +70,7 @@ npm run vercel:deploy          # production CLI deploy
 
 ### `vercel.json` (root)
 
-Current file is minimal schema-only; Elysia needs no extra routes. Optional later:
-
-- `bunVersion` if switching runtime to Bun.
-- Headers / CORS only if not handled in `src/app.ts`.
+Pins the API to Seoul (`icn1`) so Comcigan/NEIS round-trips stay in-region. Elysia still auto-detects `src/app.ts`; no extra rewrites.
 
 ---
 

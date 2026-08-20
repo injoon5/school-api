@@ -1,7 +1,7 @@
-import { API_VERSION } from "./config.js";
+import { API_VERSION, APP_NAME } from "./config.js";
 
 const API_DESCRIPTION = `
-TimeForSchool wraps **Comcigan** and the Korean **NEIS Open API** (school info, classes, meals, calendar, timetables).
+${APP_NAME} wraps **Comcigan** and the Korean **NEIS Open API** (school info, classes, meals, calendar, timetables).
 
 ### Timetable source
 \`GET /timetable\` defaults to \`source=auto\`: both upstreams in parallel, shorter subject name wins, missing weekdays/periods fill from the other. NEIS Saturday is ignored. Pin \`source=comcigan\` or \`source=neis\` to call only one.
@@ -31,7 +31,7 @@ export const openApiPluginConfig = {
   path: "/docs",
   documentation: {
     info: {
-      title: "TimeForSchool API",
+      title: `${APP_NAME} API`,
       version: API_VERSION,
       description: API_DESCRIPTION,
     },
@@ -52,7 +52,7 @@ export const openApiPluginConfig = {
       clientKey: "fetch",
     },
     metadata: {
-      title: "TimeForSchool API",
+      title: `${APP_NAME} API`,
       description:
         "NEIS school data and Comcigan/NEIS timetables (auto-merged by default) for Korean schools.",
     },

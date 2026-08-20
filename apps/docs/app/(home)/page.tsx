@@ -4,7 +4,7 @@ import { apiProductionUrl } from '@/lib/shared';
 export default function HomePage() {
   return (
     <div className="flex flex-col justify-center text-center flex-1 px-6">
-      <h1 className="text-3xl font-bold mb-3">TimeForSchool</h1>
+      <h1 className="text-3xl font-bold mb-3">TimeforSchool</h1>
       <p className="text-fd-muted-foreground mb-8 max-w-lg mx-auto">
         Documentation for the TypeScript client and the production HTTP API
         (NEIS + Comcigan).

@@ -1,10 +1,8 @@
 export {
   NeisClient,
-  Neispy,
   isLegacyTimetable,
   timetableKindFromSchool,
   type NeisClientOptions,
-  type NeispyOptions,
   type SchoolTimetableKind,
 } from "./client.js";
 export {
@@ -12,6 +10,11 @@ export {
   NeisException,
   NeisHttpException,
 } from "./errors.js";
+export { pickSchoolRow } from "./pick-school.js";
+export type {
+  PickSchoolResult,
+  SchoolQuery as PickSchoolQuery,
+} from "./pick-school.js";
 export type {
   AcaInsTiInfoParams,
   AcaInsTiInfoRow,

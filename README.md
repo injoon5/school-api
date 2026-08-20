@@ -1,4 +1,4 @@
-# TimeForSchool API
+# TimeforSchool API
 
 TypeScript API for NEIS school data (school info, classes, lunch, schedule) and weekly timetables (Comcigan + NEIS, merged by default).
 
@@ -119,9 +119,11 @@ Errors use a consistent JSON shape and HTTP status code:
 | `CONFLICTING_SCHOOL_PARAMS` | 400 | Both `schoolname` and `schoolcode` sent |
 | `MISSING_SCHOOL_IDENTIFIER` | 400 | Neither `schoolname` nor `schoolcode` sent |
 | `SCHOOL_NOT_FOUND` | 404 | NEIS has no matching school |
+| `SCHOOL_AMBIGUOUS` | 409 | Multiple NEIS schools matched—use `schoolcode` |
 | `NEIS_DATA_NOT_FOUND` | 404 | NEIS returned no rows for the date range |
+| `TIMETABLE_SCHOOL_NOT_FOUND` | 404 | Neither Comcigan nor NEIS found the school |
 | `TIMETABLE_INVALID_GRADE_CLASS` | 404 | No timetable for grade/class |
-| `TIMETABLE_AMBIGUOUS_SCHOOL` | 409 | Multiple Comcigan matches—use `schoolcode` |
+| `TIMETABLE_AMBIGUOUS_SCHOOL` | 409 | Multiple timetable school matches—use `schoolcode` |
 | `NEIS_UPSTREAM_ERROR` | 502 | NEIS API failure |
 | `TIMETABLE_UPSTREAM_ERROR` | 502 | Comcigan fetch/parse failure |
 | `INTERNAL_ERROR` | 500 | Unexpected error |
@@ -146,7 +148,8 @@ Errors use a consistent JSON shape and HTTP status code:
 - `npm run build` — build `@timeforschool/client`, then compile API to `dist/`
 - `npm run build:client` — build client package only
 - `npm start` — run compiled server (`node dist/server.js`)
-- `npm test` — structural smoke tests
+- `npm test` — unit tests (no network)
+- `npm run test:live` — live NEIS/Comcigan smoke
 
 ## Deploy to Vercel
 

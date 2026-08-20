@@ -3,6 +3,7 @@
  */
 import { fetchNeisTimeTable } from "@timeforschool/client";
 import { app } from "../app.js";
+import { NEIS_API_KEY } from "../config.js";
 import {
   assert,
   assertTimetablePeriod,
@@ -188,7 +189,7 @@ async function run(): Promise<void> {
     schoolCode: Number(HAFS_CODE),
     fromYmd: "20260713",
     toYmd: "20260717",
-    key: process.env.NEIS_API_KEY ?? "64db83c20c8a4f66b54ac8637b1d044f",
+    key: NEIS_API_KEY,
   });
   const weekDays = mapped.timetable[GRADE]?.[CLASS_NO]?.slice(1);
   assert(Boolean(weekDays?.length), "외대부고 July week must map to grade/class");
