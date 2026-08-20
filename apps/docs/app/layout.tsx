@@ -12,11 +12,11 @@ export const metadata: Metadata = {
     process.env.NEXT_PUBLIC_DOCS_URL ?? 'https://docs.timefor.school',
   ),
   title: {
-    default: 'TimeForSchool',
-    template: '%s | TimeForSchool',
+    default: 'TimeforSchool',
+    template: '%s | TimeforSchool',
   },
   description:
-    'Documentation for @timeforschool/client and the TimeForSchool HTTP API.',
+    'Documentation for @timeforschool/client and the TimeforSchool HTTP API.',
 };
 
 export default function Layout({ children }: LayoutProps<'/'>) {

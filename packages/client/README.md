@@ -3,7 +3,7 @@
 TypeScript client for Korean school data APIs:
 
 - **NEIS Open API** — school profiles, classes, lunch menus, calendars
-- **Comcigan** — weekly class timetables
+- **Comcigan + NEIS timetables** — `fetchTimeTable` defaults to `source: "auto"` (shorter subject wins; weekday gaps fill from the other). Pin `comcigan` or `neis` to call one upstream.
 
 ## Install
 
@@ -54,11 +54,22 @@ try {
     // no events in range
   }
 }
+
+const periods = await neis.hisTimetable({
+  ATPT_OFCDC_SC_CODE: school.ATPT_OFCDC_SC_CODE,
+  SD_SCHUL_CODE: school.SD_SCHUL_CODE,
+  TI_FROM_YMD: "20260511",
+  TI_TO_YMD: "20260515",
+  GRADE: "1",
+  CLASS_NM: "3",
+});
 ```
+
+`NeisClient` covers the same endpoints as Python [neispy](https://github.com/SaidBySolo/neispy): `schoolInfo`, `classInfo`, `mealServiceDietInfo`, `schoolSchedule`, `acaInsTiInfo`, `elsTimetable` / `misTimetable` / `hisTimetable` / `spsTimetable` (plus pre-2023 `*bgs` routes), `schoolMajorinfo`, `schulAflcoinfo`, `tiClrminfo`.
 
 Subpath import: `@timeforschool/client/neis`
 
-## Timetable (Comcigan)
+## Timetable
 
 ```typescript
 import {
@@ -70,11 +81,22 @@ import {
 const table = await fetchTimeTable({
   schoolName: "양정고등학교",
   weekNum: 0,
+  key: process.env.NEIS_API_KEY, // used by default `source: "auto"`
 });
 
-const grade1Class3 = table.timetable[1][3].slice(1); // weekdays only
+const neisOnly = await fetchTimeTable({
+  schoolName: "용인한국외국어대학교부설고등학교",
+  schoolCode: 7531146,
+  weekNum: 0,
+  source: "neis",
+  key: process.env.NEIS_API_KEY,
+});
+
+const grade1Class3 = table.timetable[1][3].slice(1); // Mon–Fri
 console.log(table.dayTime, table.updateDate);
 ```
+
+Default merge: shorter subject wins, missing weekdays/periods fill from the other source, cancelled Comcigan periods stay cancelled. NEIS Saturday (`토요휴업일`) is dropped. NEIS leaves `teacher`, `dayTime`, `homeroomTeachers`, and `original` blank when Comcigan has nothing to overlay.
 
 Subpath import: `@timeforschool/client/timetable`
 
@@ -84,7 +106,7 @@ Subpath import: `@timeforschool/client/timetable`
 |-------|------|
 | `NeisDataNotFoundError` | NEIS `INFO-200` |
 | `NeisHttpException` | Other NEIS API errors |
-| `TimetableSchoolNotFoundError` | Comcigan school search empty |
+| `TimetableSchoolNotFoundError` | Comcigan/NEIS school search empty |
 | `TimetableAmbiguousSchoolError` | Multiple Comcigan matches |
 | `TimetableParseError` | HTML/JSON parse failure |
 | `TimetableInvalidWeekError` | `weekNum` not 0 or 1 |

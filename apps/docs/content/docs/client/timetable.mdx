@@ -1,36 +1,93 @@
 ---
-title: Timetable (Comcigan)
-description: fetchTimeTable for weekly class schedules
+title: Timetable
+description: fetchTimeTable merges Comcigan + NEIS by default (shorter name wins)
 ---
 
 ```ts
 import {
   fetchTimeTable,
+  fetchNeisTimeTable,
   TimetableAmbiguousSchoolError,
   TimetableSchoolNotFoundError,
 } from "@timeforschool/client";
 // or: import { fetchTimeTable } from "@timeforschool/client/timetable";
 ```
 
+Default `source: "auto"` calls Comcigan and NEIS in parallel, then merges:
+
+- Shorter non-empty **subject** wins (Comcigan on a tie)
+- Missing weekdays/periods fill from the other source
+- Cancelled Comcigan periods (`replaced` + empty subject) are kept — not overwritten with NEIS placeholders like `여름방학`
+- **NEIS Saturday is dropped.** Schools do not have Saturday class; leftover `토요휴업일` rows are stale
+
+Pin `source: "comcigan"` or `source: "neis"` to hit a single upstream. NEIS is mapped onto the Comcigan result shape; fields the Open API does not publish stay blank. Comcigan output is never stripped to look like NEIS.
+
 ## Options
 
 | Field | Type | Description |
 | ----- | ---- | ----------- |
-| `schoolName` | `string` | Korean school name (Comcigan search) |
-| `schoolCode` | `string` | Optional NEIS 7-digit code for disambiguation |
+| `schoolName` | `string` | Korean school name |
+| `schoolCode` | `number` | Optional NEIS 7-digit code for disambiguation |
 | `weekNum` | `0 \| 1` | `0` = this week, `1` = next week |
+| `source` | `"auto" \| "comcigan" \| "neis"` | Default `auto` |
+| `key` | `string` | NEIS API key (used for `auto` and `neis`) |
 
-## Example
+HTTP: `GET /timetable` (same `source` query).
+
+## Shape
+
+Both sources return `TimeTableResult` (the Comcigan grid). Slice `[1]` on the day axis to skip Sunday. Saturday is not included from NEIS.
+
+```ts
+const table = await fetchTimeTable({
+  schoolName: "양정고등학교",
+  weekNum: 0,
+  key: process.env.NEIS_API_KEY,
+});
+
+const grade1Class3 = table.timetable[1][3].slice(1);
+```
+
+HTTP `GET /timetable` already returns that weekday array as `timetable`.
+
+## What NEIS does not publish
+
+Left blank on purpose when Comcigan has no data (same keys, empty values):
+
+| Field | NEIS value |
+| ----- | ---------- |
+| `teacher` | `""` |
+| `dayTime` / HTTP `day_time` | `[]` |
+| `original` | `null` |
+| `replaced` | `false` |
+| `homeroomTeachers` | `[]` |
+
+`subject` comes from `ITRT_CNTNT`. `updateDate` is `LOAD_DTM` as `YYYY-MM-DD` when present.
+
+## Example (auto merge)
 
 ```ts
 const table = await fetchTimeTable({
   schoolName: "목운중학교",
   weekNum: 0,
+  key: process.env.NEIS_API_KEY,
 });
 
-// grade 1, class 3 — slice(1) skips Sunday slot
 const grade1Class3 = table.timetable[1][3].slice(1);
 console.log(table.dayTime, table.updateDate);
 ```
 
 When multiple Comcigan schools match the name, pass `schoolCode` or handle `TimetableAmbiguousSchoolError`.
+
+## Example (NEIS-only school)
+
+외대부고 does not use Comcigan. Auto still works: Comcigan 404s, NEIS fills in. Official name is **용인한국외국어대학교부설고등학교** (`7531146`). `schoolname=외대부고` will not match NEIS.
+
+```ts
+const table = await fetchTimeTable({
+  schoolName: "용인한국외국어대학교부설고등학교",
+  schoolCode: 7531146,
+  key: process.env.NEIS_API_KEY,
+  weekNum: 0,
+});
+```

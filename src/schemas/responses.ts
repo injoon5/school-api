@@ -8,7 +8,7 @@ const neisOptionalString = (description: string, example: string) =>
 
 /** GET / */
 export const ApiMetaSchema = t.Object({
-  name: t.String({ examples: ["TimeForSchool"] }),
+  name: t.String({ examples: ["TimeforSchool"] }),
   version: t.String({ examples: ["0.0.1"] }),
   docs: t.String({ examples: ["/docs"] }),
   openapi: t.String({ examples: ["/docs/json"] }),
@@ -88,7 +88,7 @@ export const MealRowSchema = t.Object(
     ATPT_OFCDC_SC_CODE: neisString("Office of education code", "B10"),
     ATPT_OFCDC_SC_NM: neisString("Office of education name", "서울특별시교육청"),
     SD_SCHUL_CODE: neisString("School code", "7010208"),
-    SCHUL_NM: neisString("School name", "목운중학교"),
+    SCHUL_NM: neisString("School name", "양정고등학교"),
     MMEAL_SC_CODE: neisString("Meal code", "1"),
     MMEAL_SC_NM: neisString("Meal name", "조식"),
     MLSV_YMD: neisString("Meal date", "20250526"),
@@ -110,7 +110,7 @@ export const MealListSchema = t.Array(MealRowSchema, {
       {
         ATPT_OFCDC_SC_CODE: "B10",
         SD_SCHUL_CODE: "7010208",
-        SCHUL_NM: "목운중학교",
+        SCHUL_NM: "양정고등학교",
         MMEAL_SC_CODE: "2",
         MMEAL_SC_NM: "중식",
         MLSV_YMD: "20250526",
@@ -133,7 +133,7 @@ export const ScheduleRowSchema = t.Object(
     ATPT_OFCDC_SC_CODE: neisString("Office of education code", "B10"),
     ATPT_OFCDC_SC_NM: neisString("Office of education name", "서울특별시교육청"),
     SD_SCHUL_CODE: neisString("School code", "7010208"),
-    SCHUL_NM: neisString("School name", "목운중학교"),
+    SCHUL_NM: neisString("School name", "양정고등학교"),
     AY: neisString("Academic year", "2025"),
     DGHT_CRSE_SC_NM: neisString("Day/night course", "주간"),
     SCHUL_CRSE_SC_NM: neisString("School course", "고등학교"),
@@ -158,7 +158,7 @@ export const ScheduleListSchema = t.Array(ScheduleRowSchema, {
       {
         ATPT_OFCDC_SC_CODE: "B10",
         SD_SCHUL_CODE: "7010208",
-        SCHUL_NM: "목운중학교",
+        SCHUL_NM: "양정고등학교",
         AY: "2025",
         AA_YMD: "20250505",
         EVENT_NM: "어린이날",
@@ -192,9 +192,13 @@ export const TimetableOriginalSchema = t.Union([
 export const TimetablePeriodSchema = t.Object({
   period: t.Number({ examples: [1] }),
   subject: t.String({ examples: ["수학"] }),
-  teacher: t.String({ examples: ["김교사"] }),
+  teacher: t.String({
+    description:
+      "Teacher name from Comcigan. Empty when only NEIS data is available (NEIS does not publish teachers).",
+    examples: ["김교사"],
+  }),
   replaced: t.Boolean({
-    description: "true only when this period was substituted; most periods are false.",
+    description: "true only when this period was substituted; most periods are false. Always false for `source=neis`.",
     examples: [false],
   }),
   original: TimetableOriginalSchema,
@@ -202,6 +206,8 @@ export const TimetablePeriodSchema = t.Object({
 
 export const TimetableResponseSchema = t.Object({
   day_time: t.Array(t.String({ examples: ["09:00"] }), {
+    description:
+      "Period start times from Comcigan. Empty when only NEIS data is available (NEIS does not publish bell times).",
     examples: [["09:00", "09:50", "10:00"]],
   }),
   timetable: t.Array(t.Array(TimetablePeriodSchema), {
@@ -237,5 +243,9 @@ export const TimetableResponseSchema = t.Object({
       ],
     ],
   }),
-  update_date: t.String({ examples: ["2025-05-26"] }),
+  update_date: t.String({
+    description:
+      "Comcigan last-updated stamp, or NEIS LOAD_DTM as YYYY-MM-DD. Empty if NEIS omitted it.",
+    examples: ["2025-05-26"],
+  }),
 });

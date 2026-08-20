@@ -1,6 +1,6 @@
 ---
 title: NEIS client
-description: School info, classes, meals, and calendar via NeisClient
+description: School info, classes, meals, calendar, and official timetables via NeisClient
 ---
 
 ```ts
@@ -8,24 +8,37 @@ import { NeisClient, NeisDataNotFoundError } from "@timeforschool/client";
 // or: import { NeisClient } from "@timeforschool/client/neis";
 ```
 
+Port of Python [neispy](https://github.com/SaidBySolo/neispy) against `https://open.neis.go.kr/hub`.
+
 ## Construction
 
 ```ts
 const neis = new NeisClient({
-  key: process.env.NEIS_API_KEY, // optional; sample key used when omitted
+  key: process.env.NEIS_API_KEY, // optional; omitted requests are anonymous
   pIndex: 1,
-  pSize: 100,
+  pSize: 1000,
 });
 ```
+
+Responses paginate automatically up to the reported `list_total_count`.
 
 ## Methods
 
 | Method | NEIS endpoint | Notes |
 | ------ | ------------- | ----- |
 | `schoolInfo` | `schoolInfo` | Search by `SCHUL_NM` or codes |
-| `classInfo` | `classInfo` | Requires office + school codes and `GRADE` |
+| `classInfo` | `classInfo` | Requires office + school codes |
 | `mealServiceDietInfo` | `mealServiceDietInfo` | `MLSV_FROM_YMD` / `MLSV_TO_YMD` as `YYYYMMDD` |
 | `schoolSchedule` | `SchoolSchedule` | `AA_FROM_YMD` / `AA_TO_YMD` as `YYYYMMDD` |
+| `acaInsTiInfo` | `acaInsTiInfo` | Academies / 교습소 |
+| `elsTimetable` | `elsTimetable` | Elementary. Pre-2023 dates use `elsTimetablebgs` |
+| `misTimetable` | `misTimetable` | Middle school |
+| `hisTimetable` | `hisTimetable` | High school |
+| `spsTimetable` | `spsTimetable` | Special schools |
+| `schoolTimetable` | (dispatched) | Picks els/mis/his/sps from `SCHUL_KND_SC_NM` |
+| `schoolMajorinfo` | `schoolMajorinfo` | High-school majors |
+| `schulAflcoinfo` | `schulAflcoinfo` | Course tracks |
+| `tiClrminfo` | `tiClrminfo` | Classrooms |
 
 ## Example
 
@@ -44,6 +57,15 @@ const meals = await neis.mealServiceDietInfo({
   SD_SCHUL_CODE: school.SD_SCHUL_CODE,
   MLSV_FROM_YMD: "20250526",
   MLSV_TO_YMD: "20250526",
+});
+
+const his = await neis.hisTimetable({
+  ATPT_OFCDC_SC_CODE: school.ATPT_OFCDC_SC_CODE,
+  SD_SCHUL_CODE: school.SD_SCHUL_CODE,
+  TI_FROM_YMD: "20260511",
+  TI_TO_YMD: "20260515",
+  GRADE: "1",
+  CLASS_NM: "3",
 });
 
 try {

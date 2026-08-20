@@ -1,5 +1,6 @@
 import {
   NeisDataNotFoundError,
+  NeisException,
   NeisHttpException,
   TimetableAmbiguousSchoolError,
   TimetableInvalidWeekError,
@@ -113,7 +114,7 @@ export class ApiError extends Error {
       return new ApiError(
         ErrorCode.TIMETABLE_SCHOOL_NOT_FOUND,
         404,
-        "Comcigan could not find this school. Check the name or use schoolcode.",
+        "No school matched this name. Check the name or use schoolcode.",
         { schoolname: error.schoolName },
       );
     }
@@ -148,6 +149,12 @@ export class ApiError extends Error {
       return new ApiError(ErrorCode.NEIS_UPSTREAM, 502, "NEIS API request failed.", {
         upstream: error.message,
         code: error.code,
+      });
+    }
+
+    if (error instanceof NeisException) {
+      return new ApiError(ErrorCode.NEIS_UPSTREAM, 502, "NEIS API request failed.", {
+        upstream: error.message,
       });
     }
 

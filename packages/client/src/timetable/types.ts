@@ -1,3 +1,6 @@
+import type { NeisClient } from "../neis/client.js";
+import type { SchoolInfoRow } from "../neis/types.js";
+
 export interface Lecture {
   period: number;
   subject: string;
@@ -25,6 +28,8 @@ export interface TimeTableResult {
   homeroomTeachers: string[][];
 }
 
+export type TimetableSource = "auto" | "comcigan" | "neis";
+
 export interface FetchTimeTableOptions {
   schoolName: string;
   localCode?: number;
@@ -32,4 +37,16 @@ export interface FetchTimeTableOptions {
   schoolCode?: number;
   /** 0 = current week, 1 = next week */
   weekNum?: number;
+  /**
+   * `auto` (default) fetches Comcigan and NEIS in parallel and merges:
+   * shorter subject wins, gaps fill from the other source. NEIS Saturday
+   * is dropped (stale 토요휴업일). Pin `comcigan` or `neis` for one upstream.
+   */
+  source?: TimetableSource;
+  /** NEIS API key; used when `source` is `neis` or `auto`. */
+  key?: string;
+  /** Reuse an existing NEIS client (avoids a second construction on the HTTP path). */
+  client?: NeisClient;
+  /** Pre-resolved NEIS school row. Skips schoolInfo when set. */
+  school?: SchoolInfoRow;
 }

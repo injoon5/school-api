@@ -1,10 +1,10 @@
 {
   "name": "@timeforschool/client",
   "version": "0.1.0",
-  "description": "TypeScript client for the Korean NEIS Open API and Comcigan school timetables",
+  "description": "TypeScript client for the Korean NEIS Open API and Comcigan/NEIS school timetables",
   "type": "module",
   "license": "MIT",
-  "author": "TimeForSchool",
+  "author": "TimeforSchool",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/injoon5/school-api.git",

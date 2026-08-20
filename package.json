@@ -16,7 +16,8 @@
     "openapi:sync": "npm run openapi:export && npm run openapi:generate -w @timeforschool/docs",
     "dev": "tsx watch src/server.ts",
     "start": "node dist/server.js",
-    "test": "tsx src/test/compare.ts && tsx src/test/yangjeong-1-3.ts",
+    "test": "tsx src/test/timetable-merge.ts",
+    "test:live": "tsx src/test/smoke.ts && tsx src/test/yangjeong-1-3.ts && tsx src/test/neis-timetable.ts",
     "vercel:dev": "vercel dev",
     "vercel:deploy": "vercel deploy --prod"
   },

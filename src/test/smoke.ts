@@ -1,3 +1,6 @@
+/**
+ * Live HTTP smoke against NEIS + Comcigan (목운중학교).
+ */
 import { app } from "../app.js";
 import {
   assert,
@@ -58,7 +61,7 @@ async function main() {
   );
   if (schedule.status === 404 && isErrorBody(schedule.body)) {
     assertStructuredError(schedule.body, "NEIS_DATA_NOT_FOUND");
-    console.log("✓ GET /schedule (no data for range)");
+    console.log("✓ GET /schedule empty range → NEIS_DATA_NOT_FOUND");
   } else {
     assert(schedule.status === 200, `GET /schedule expected 200 or 404`);
     assertScheduleList(schedule.body);

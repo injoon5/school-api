@@ -15,8 +15,8 @@ description: Typed error classes from @timeforschool/client
 
 | Class | When |
 | ----- | ---- |
-| `TimetableSchoolNotFoundError` | Comcigan school search empty |
-| `TimetableAmbiguousSchoolError` | Multiple Comcigan matches |
+| `TimetableSchoolNotFoundError` | Comcigan or NEIS school search empty |
+| `TimetableAmbiguousSchoolError` | Multiple Comcigan matches — pass `schoolCode`. NEIS name duplicates keep the first row. |
 | `TimetableParseError` | HTML/JSON parse failure |
 | `TimetableInvalidWeekError` | `weekNum` not `0` or `1` |
 | `TimetableError` | Base class |

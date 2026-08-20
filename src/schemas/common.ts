@@ -10,8 +10,8 @@ export const DateYmd = t.String({
 export const SchoolName = t.String({
   minLength: 1,
   description:
-    "Korean school name as registered in NEIS (e.g. 목운중학교). Required on GET /school.",
-  examples: ["목운중학교"],
+    "Korean school name as registered in NEIS (e.g. 양정고등학교). Required on GET /school.",
+  examples: ["양정고등학교"],
 });
 
 export const SchoolCode = t.String({
@@ -51,6 +51,13 @@ export const Week = t.Optional(
     maximum: 1,
     default: 0,
     description: "0 = current week, 1 = next week.",
+  }),
+);
+
+export const TimetableSource = t.Optional(
+  t.Union([t.Literal("auto"), t.Literal("comcigan"), t.Literal("neis")], {
+    description:
+      "Timetable source. `auto` (default) fetches Comcigan and NEIS together: shorter subject wins, weekday gaps fill from the other. NEIS Saturday is ignored. Pin `comcigan` or `neis` for a single upstream.",
   }),
 );
 

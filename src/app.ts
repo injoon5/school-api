@@ -3,7 +3,7 @@ import { openapi } from "@elysiajs/openapi";
 import { openApiPluginConfig } from "./openapi-config.js";
 import { fetchTimeTable } from "@timeforschool/client";
 import { Elysia, type Static, t } from "elysia";
-import { API_VERSION, CORS_ORIGINS } from "./config.js";
+import { API_VERSION, APP_NAME, CORS_ORIGINS, NEIS_API_KEY } from "./config.js";
 import { ApiError, ErrorCode } from "./errors/api-error.js";
 import {
   ApiErrorSchema,
@@ -12,6 +12,7 @@ import {
   Grade,
   SchoolName,
   SchoolQuery,
+  TimetableSource,
   Week,
 } from "./schemas/common.js";
 import {
@@ -24,8 +25,6 @@ import {
 import {
   assertSingleSchoolParam,
   createNeisClient,
-  lookupSchoolNameByCode,
-  requireSchoolParam,
   resolveSchool,
 } from "./services/school.js";
 import { omitNullsFromRows } from "./utils/json.js";
@@ -41,7 +40,7 @@ function currentAcademicYear(now = new Date()): string {
   return String(now.getMonth() + 1 < 3 ? year - 1 : year);
 }
 
-export const app = new Elysia({ name: "timeforschool" })
+export const app = new Elysia({ name: "timeforschool-api" })
   .use(
     cors({
       origin: CORS_ORIGINS,
@@ -81,7 +80,7 @@ export const app = new Elysia({ name: "timeforschool" })
   .get(
     "/",
     () => ({
-      name: "TimeForSchool",
+      name: APP_NAME,
       version: API_VERSION,
       docs: "/docs",
       openapi: "/docs/json",
@@ -125,11 +124,8 @@ export const app = new Elysia({ name: "timeforschool" })
   .get(
     "/classes",
     async ({ query }) => {
-      assertSingleSchoolParam(query);
-      requireSchoolParam(query);
-
-      const school = await resolveSchool(query);
       const client = createNeisClient();
+      const school = await resolveSchool(query, client);
       const classRows = await client.classInfo({
         ATPT_OFCDC_SC_CODE: school.ATPT_OFCDC_SC_CODE,
         SD_SCHUL_CODE: school.SD_SCHUL_CODE,
@@ -181,19 +177,27 @@ export const app = new Elysia({ name: "timeforschool" })
       const grade = query.grade;
       const classno = query.classno;
       const week = query.week ?? 0;
+      const source = query.source ?? "auto";
+      const client = createNeisClient();
 
       let schoolName = schoolname;
+      let school = undefined;
       if (!schoolName) {
         if (!schoolcode) {
           throw ApiError.missingSchoolIdentifier();
         }
-        schoolName = await lookupSchoolNameByCode(schoolcode);
+        school = await resolveSchool({ schoolcode }, client);
+        schoolName = school.SCHUL_NM;
       }
 
       const timetable = await fetchTimeTable({
         schoolName,
         schoolCode: schoolcode ? Number(schoolcode) : undefined,
         weekNum: week,
+        source,
+        key: NEIS_API_KEY,
+        client,
+        school,
       });
 
       const weekDays = timetable.timetable[grade]?.[classno]?.slice(1);
@@ -202,7 +206,7 @@ export const app = new Elysia({ name: "timeforschool" })
           ErrorCode.TIMETABLE_INVALID_GRADE_CLASS,
           404,
           "No timetable found for this grade and class.",
-          { grade, classno, schoolname: schoolName },
+          { grade, classno, schoolname: timetable.schoolName, source },
         );
       }
 
@@ -219,13 +223,14 @@ export const app = new Elysia({ name: "timeforschool" })
           grade: Grade,
           classno: ClassNo,
           week: Week,
+          source: TimetableSource,
         }),
       ]),
       detail: {
         tags: ["Timetable"],
         summary: "Weekly class timetable",
         description:
-          "Fetches the class schedule from Comcigan. Provide schoolname, or schoolcode alone (name is resolved via NEIS). week: 0 = this week, 1 = next week. Most periods have `replaced: false` and `original: null`; when a period was substituted, `replaced` is true and `original` is the class before the change.",
+          "Fetches the class schedule. Default `source=auto` calls Comcigan and NEIS in parallel and merges them: the shorter subject name wins, and missing weekdays/periods fill from the other source. Cancelled Comcigan periods are kept. NEIS Saturday is ignored (stale 토요휴업일). Pin `source=comcigan` or `source=neis` to hit a single upstream. Provide schoolname, or schoolcode alone. week: 0 = this week, 1 = next week. Comcigan substitutions use `replaced` + `original`. NEIS-only fields stay blank (`teacher`, `day_time`) when Comcigan has no data.",
       },
       response: {
         200: "TimetableResponse",
@@ -239,11 +244,8 @@ export const app = new Elysia({ name: "timeforschool" })
   .get(
     "/lunch",
     async ({ query }) => {
-      assertSingleSchoolParam(query);
-      requireSchoolParam(query);
-
-      const school = await resolveSchool(query);
       const client = createNeisClient();
+      const school = await resolveSchool(query, client);
       const meals = await client.mealServiceDietInfo({
         ATPT_OFCDC_SC_CODE: school.ATPT_OFCDC_SC_CODE,
         SD_SCHUL_CODE: school.SD_SCHUL_CODE,
@@ -295,11 +297,8 @@ export const app = new Elysia({ name: "timeforschool" })
   .get(
     "/schedule",
     async ({ query }) => {
-      assertSingleSchoolParam(query);
-      requireSchoolParam(query);
-
-      const school = await resolveSchool(query);
       const client = createNeisClient();
+      const school = await resolveSchool(query, client);
       const rows = await client.schoolSchedule({
         ATPT_OFCDC_SC_CODE: school.ATPT_OFCDC_SC_CODE,
         SD_SCHUL_CODE: school.SD_SCHUL_CODE,

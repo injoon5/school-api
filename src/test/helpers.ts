@@ -111,16 +111,28 @@ export function assertScheduleList(body: unknown): void {
 
 export function assertTimetableResponse(
   body: unknown,
+  options: { allowEmptyDayTime?: boolean } = {},
 ): asserts body is TimetableResponse {
   assert(typeof body === "object" && body !== null, "timetable must be object");
   const tt = body as TimetableResponse;
-  assert(Array.isArray(tt.day_time) && tt.day_time.length > 0, "day_time required");
-  assert(
-    tt.day_time.every((slot) => typeof slot === "string" && slot.length > 0),
-    "day_time entries must be strings",
-  );
+  assert(Array.isArray(tt.day_time), "day_time required");
+  if (!options.allowEmptyDayTime) {
+    assert(tt.day_time.length > 0, "day_time required");
+    assert(
+      tt.day_time.every((slot) => typeof slot === "string" && slot.length > 0),
+      "day_time entries must be strings",
+    );
+  } else {
+    assert(
+      tt.day_time.every((slot) => typeof slot === "string"),
+      "day_time entries must be strings",
+    );
+  }
   assert(Array.isArray(tt.timetable) && tt.timetable.length > 0, "timetable required");
-  assert(typeof tt.update_date === "string" && tt.update_date.length > 0, "update_date");
+  assert(typeof tt.update_date === "string", "update_date");
+  if (!options.allowEmptyDayTime) {
+    assert(tt.update_date.length > 0, "update_date");
+  }
 
   for (const day of tt.timetable) {
     assert(Array.isArray(day), "each weekday must be an array");

@@ -9,7 +9,7 @@ export class TimetableSchoolNotFoundError extends TimetableError {
   readonly schoolName: string;
 
   constructor(schoolName: string) {
-    super(`No Comcigan school found for "${schoolName}".`);
+    super(`No school found for "${schoolName}".`);
     this.name = "TimetableSchoolNotFoundError";
     this.schoolName = schoolName;
   }
@@ -20,7 +20,7 @@ export class TimetableAmbiguousSchoolError extends TimetableError {
 
   constructor(schoolName: string) {
     super(
-      `Multiple Comcigan schools matched "${schoolName}". Pass schoolCode to disambiguate.`,
+      `Multiple schools matched "${schoolName}". Pass schoolCode to disambiguate.`,
     );
     this.name = "TimetableAmbiguousSchoolError";
     this.schoolName = schoolName;

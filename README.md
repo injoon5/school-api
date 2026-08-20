@@ -1,6 +1,6 @@
-# TimeForSchool API
+# TimeforSchool API
 
-TypeScript API for NEIS school data (school info, classes, lunch, schedule) and Comcigan timetables.
+TypeScript API for NEIS school data (school info, classes, lunch, schedule) and weekly timetables (Comcigan + NEIS, merged by default).
 
 Production: https://api.timefor.school
 
@@ -11,7 +11,7 @@ Built with [Elysia](https://elysiajs.com). Interactive reference UI is [Scalar](
 | Package | Path | Description |
 |---------|------|-------------|
 | `timeforschool-api` | repo root | HTTP API (`src/`) |
-| `@timeforschool/client` | `packages/client/` | NEIS + Comcigan client library (publishable to npm) |
+| `@timeforschool/client` | `packages/client/` | NEIS + Comcigan/NEIS timetable client (publishable to npm) |
 | `@timeforschool/docs` | `apps/docs/` | Fumadocs site (client + OpenAPI reference) |
 
 ## Documentation site
@@ -120,8 +120,9 @@ Errors use a consistent JSON shape and HTTP status code:
 | `MISSING_SCHOOL_IDENTIFIER` | 400 | Neither `schoolname` nor `schoolcode` sent |
 | `SCHOOL_NOT_FOUND` | 404 | NEIS has no matching school |
 | `NEIS_DATA_NOT_FOUND` | 404 | NEIS returned no rows for the date range |
-| `TIMETABLE_INVALID_GRADE_CLASS` | 404 | No Comcigan data for grade/class |
-| `TIMETABLE_AMBIGUOUS_SCHOOL` | 409 | Multiple Comcigan matches—use `schoolcode` |
+| `TIMETABLE_SCHOOL_NOT_FOUND` | 404 | Neither Comcigan nor NEIS found the school |
+| `TIMETABLE_INVALID_GRADE_CLASS` | 404 | No timetable for grade/class |
+| `TIMETABLE_AMBIGUOUS_SCHOOL` | 409 | Multiple Comcigan matches—use `schoolcode`. `source=auto` still 409s if Comcigan is ambiguous. |
 | `NEIS_UPSTREAM_ERROR` | 502 | NEIS API failure |
 | `TIMETABLE_UPSTREAM_ERROR` | 502 | Comcigan fetch/parse failure |
 | `INTERNAL_ERROR` | 500 | Unexpected error |
@@ -133,7 +134,7 @@ Errors use a consistent JSON shape and HTTP status code:
 | `GET /` | Service metadata and doc links |
 | `GET /school` | School info (`schoolname`) |
 | `GET /classes` | Class numbers (`grade`, `schoolname` or `schoolcode`) |
-| `GET /timetable` | Weekly timetable (`grade`, `classno`, `week`, `schoolname` or `schoolcode`) |
+| `GET /timetable` | Weekly timetable (`grade`, `classno`, `week`, `schoolname` or `schoolcode`; default `source=auto` merge) |
 | `GET /lunch` | Meal menus (`startdate`, `enddate`, `schoolname` or `schoolcode`) |
 | `GET /schedule` | School calendar (`startdate`, `enddate`, `schoolname` or `schoolcode`) |
 
@@ -146,7 +147,8 @@ Errors use a consistent JSON shape and HTTP status code:
 - `npm run build` — build `@timeforschool/client`, then compile API to `dist/`
 - `npm run build:client` — build client package only
 - `npm start` — run compiled server (`node dist/server.js`)
-- `npm test` — structural smoke tests
+- `npm test` — unit tests (no network)
+- `npm run test:live` — live NEIS/Comcigan smoke
 
 ## Deploy to Vercel
 

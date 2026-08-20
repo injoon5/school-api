@@ -1,4 +1,4 @@
-# Agent instructions (TimeForSchool monorepo)
+# Agent instructions (TimeforSchool monorepo)
 
 Instructions for Cursor Cloud Agents and other automation working in this repository.
 

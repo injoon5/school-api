@@ -1,8 +1,8 @@
 {
   "openapi": "3.0.3",
   "info": {
-    "title": "TimeForSchool API",
-    "description": "TimeForSchool wraps the Korean **NEIS Open API** (school info, classes, meals, calendar) and **Comcigan** (weekly class timetables).\n\n### School identifier\nUse **either** `schoolname` **or** `schoolcode` (NEIS 7-digit code)—never both. No endpoint defaults to a particular school; `GET /school` requires `schoolname`.\n\n### Dates\n`startdate` / `enddate` use **YYYYMMDD** (e.g. `20250526`).\n\n### Errors\nFailed requests return `{ ok: false, error: { code, message, details? } }` with an appropriate HTTP status.",
+    "title": "TimeforSchool API",
+    "description": "TimeforSchool wraps **Comcigan** and the Korean **NEIS Open API** (school info, classes, meals, calendar, timetables).\n\n### Timetable source\n`GET /timetable` defaults to `source=auto`: both upstreams in parallel, shorter subject name wins, missing weekdays/periods fill from the other. NEIS Saturday is ignored. Pin `source=comcigan` or `source=neis` to call only one.\n\n### School identifier\nUse **either** `schoolname` **or** `schoolcode` (NEIS 7-digit code)—never both. No endpoint defaults to a particular school; `GET /school` requires `schoolname`.\n\n### Dates\n`startdate` / `enddate` use **YYYYMMDD** (e.g. `20250526`).\n\n### Errors\nFailed requests return `{ ok: false, error: { code, message, details? } }` with an appropriate HTTP status.",
     "version": "0.0.1"
   },
   "tags": [
@@ -20,7 +20,7 @@
     },
     {
       "name": "Timetable",
-      "description": "Weekly timetable (Comcigan)"
+      "description": "Weekly timetable (auto merge; pin comcigan or neis)"
     },
     {
       "name": "Lunch",
@@ -78,9 +78,9 @@
             "required": true,
             "schema": {
               "minLength": 1,
-              "description": "Korean school name as registered in NEIS (e.g. 목운중학교). Required on GET /school.",
+              "description": "Korean school name as registered in NEIS (e.g. 양정고등학교). Required on GET /school.",
               "examples": [
-                "목운중학교"
+                "양정고등학교"
               ],
               "type": "string"
             }
@@ -145,9 +145,9 @@
             "required": false,
             "schema": {
               "minLength": 1,
-              "description": "Korean school name as registered in NEIS (e.g. 목운중학교). Required on GET /school.",
+              "description": "Korean school name as registered in NEIS (e.g. 양정고등학교). Required on GET /school.",
               "examples": [
-                "목운중학교"
+                "양정고등학교"
               ],
               "type": "string"
             }
@@ -246,7 +246,7 @@
           "Timetable"
         ],
         "summary": "Weekly class timetable",
-        "description": "Fetches the class schedule from Comcigan. Provide schoolname, or schoolcode alone (name is resolved via NEIS). week: 0 = this week, 1 = next week. Most periods have `replaced: false` and `original: null`; when a period was substituted, `replaced` is true and `original` is the class before the change.",
+        "description": "Fetches the class schedule. Default `source=auto` calls Comcigan and NEIS in parallel and merges them: the shorter subject name wins, and missing weekdays/periods fill from the other source. Cancelled Comcigan periods are kept. NEIS Saturday is ignored (stale 토요휴업일). Pin `source=comcigan` or `source=neis` to hit a single upstream. Provide schoolname, or schoolcode alone. week: 0 = this week, 1 = next week. Comcigan substitutions use `replaced` + `original`. NEIS-only fields stay blank (`teacher`, `day_time`) when Comcigan has no data.",
         "parameters": [
           {
             "name": "schoolname",
@@ -254,9 +254,9 @@
             "required": false,
             "schema": {
               "minLength": 1,
-              "description": "Korean school name as registered in NEIS (e.g. 목운중학교). Required on GET /school.",
+              "description": "Korean school name as registered in NEIS (e.g. 양정고등학교). Required on GET /school.",
               "examples": [
-                "목운중학교"
+                "양정고등학교"
               ],
               "type": "string"
             }
@@ -356,6 +356,19 @@
                 }
               ]
             }
+          },
+          {
+            "name": "source",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "auto",
+                "comcigan",
+                "neis"
+              ]
+            }
           }
         ],
         "responses": {
@@ -427,9 +440,9 @@
             "required": false,
             "schema": {
               "minLength": 1,
-              "description": "Korean school name as registered in NEIS (e.g. 목운중학교). Required on GET /school.",
+              "description": "Korean school name as registered in NEIS (e.g. 양정고등학교). Required on GET /school.",
               "examples": [
-                "목운중학교"
+                "양정고등학교"
               ],
               "type": "string"
             }
@@ -533,9 +546,9 @@
             "required": false,
             "schema": {
               "minLength": 1,
-              "description": "Korean school name as registered in NEIS (e.g. 목운중학교). Required on GET /school.",
+              "description": "Korean school name as registered in NEIS (e.g. 양정고등학교). Required on GET /school.",
               "examples": [
-                "목운중학교"
+                "양정고등학교"
               ],
               "type": "string"
             }
@@ -639,7 +652,7 @@
         "properties": {
           "name": {
             "examples": [
-              "TimeForSchool"
+              "TimeforSchool"
             ],
             "type": "string"
           },
@@ -977,6 +990,7 @@
         ],
         "properties": {
           "day_time": {
+            "description": "Period start times from Comcigan. Empty when only NEIS data is available (NEIS does not publish bell times).",
             "examples": [
               [
                 "09:00",
@@ -1050,13 +1064,14 @@
                     "type": "string"
                   },
                   "teacher": {
+                    "description": "Teacher name from Comcigan. Empty when only NEIS data is available (NEIS does not publish teachers).",
                     "examples": [
                       "김교사"
                     ],
                     "type": "string"
                   },
                   "replaced": {
-                    "description": "true only when this period was substituted; most periods are false.",
+                    "description": "true only when this period was substituted; most periods are false. Always false for `source=neis`.",
                     "examples": [
                       false
                     ],
@@ -1117,6 +1132,7 @@
             }
           },
           "update_date": {
+            "description": "Comcigan last-updated stamp, or NEIS LOAD_DTM as YYYY-MM-DD. Empty if NEIS omitted it.",
             "examples": [
               "2025-05-26"
             ],
@@ -1131,7 +1147,7 @@
             {
               "ATPT_OFCDC_SC_CODE": "B10",
               "SD_SCHUL_CODE": "7010208",
-              "SCHUL_NM": "목운중학교",
+              "SCHUL_NM": "양정고등학교",
               "MMEAL_SC_CODE": "2",
               "MMEAL_SC_NM": "중식",
               "MLSV_YMD": "20250526",
@@ -1192,7 +1208,7 @@
             "SCHUL_NM": {
               "description": "School name",
               "examples": [
-                "목운중학교"
+                "양정고등학교"
               ],
               "type": "string"
             },
@@ -1283,7 +1299,7 @@
             {
               "ATPT_OFCDC_SC_CODE": "B10",
               "SD_SCHUL_CODE": "7010208",
-              "SCHUL_NM": "목운중학교",
+              "SCHUL_NM": "양정고등학교",
               "AY": "2025",
               "AA_YMD": "20250505",
               "EVENT_NM": "어린이날",
@@ -1341,7 +1357,7 @@
             "SCHUL_NM": {
               "description": "School name",
               "examples": [
-                "목운중학교"
+                "양정고등학교"
               ],
               "type": "string"
             },

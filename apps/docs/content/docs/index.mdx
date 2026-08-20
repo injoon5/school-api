@@ -1,14 +1,14 @@
 ---
 title: Introduction
-description: TimeForSchool API and TypeScript client for Korean school data
+description: TimeforSchool API and TypeScript client for Korean school data
 ---
 
-TimeForSchool provides a hosted HTTP API and an npm package for Korean school data:
+TimeforSchool provides a hosted HTTP API and an npm package for Korean school data:
 
+- **Comcigan + NEIS** — weekly class timetables (`source=auto` merge by default)
 - **NEIS Open API** — school profiles, classes, lunch menus, calendars
-- **Comcigan** — weekly class timetables
 
-On the HTTP API, every endpoint that targets a school requires **`schoolname`** or **`schoolcode`** (NEIS 7-digit code). There is no default school—`GET /school` also requires `schoolname`.
+On the HTTP API, every endpoint that targets a school requires **`schoolname`** or **`schoolcode`** (NEIS 7-digit code). There is no default school—`GET /school` also requires `schoolname`. `GET /timetable` defaults to **`source=auto`**. Pin **`source=comcigan`** or **`source=neis`** to call one upstream.
 
 <Cards>
   <Card title="TypeScript client" href="/docs/client" description="Use @timeforschool/client in Node or the browser" />
