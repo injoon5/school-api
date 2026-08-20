@@ -1,16 +1,38 @@
-export { NeisClient, Neispy, type NeisClientOptions, type NeispyOptions } from "./client.js";
+export {
+  NeisClient,
+  Neispy,
+  isLegacyTimetable,
+  timetableKindFromSchool,
+  type NeisClientOptions,
+  type NeispyOptions,
+  type SchoolTimetableKind,
+} from "./client.js";
 export {
   NeisDataNotFoundError,
   NeisException,
   NeisHttpException,
 } from "./errors.js";
 export type {
+  AcaInsTiInfoParams,
+  AcaInsTiInfoRow,
   ClassInfoParams,
   ClassInfoRow,
+  ElsTimetableRow,
+  HisTimetableRow,
   MealServiceDietInfoParams,
   MealServiceDietInfoRow,
+  MisTimetableRow,
   SchoolInfoParams,
   SchoolInfoRow,
+  SchoolMajorInfoParams,
+  SchoolMajorInfoRow,
   SchoolScheduleParams,
   SchoolScheduleRow,
+  SchulAflcoInfoParams,
+  SchulAflcoInfoRow,
+  SpsTimetableRow,
+  TiClrmInfoParams,
+  TiClrmInfoRow,
+  TimetableParams,
+  TimetableRow,
 } from "./types.js";

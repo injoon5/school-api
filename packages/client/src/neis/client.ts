@@ -1,18 +1,33 @@
 import { raiseForNeisResult } from "./errors.js";
 import type {
+  AcaInsTiInfoParams,
+  AcaInsTiInfoRow,
   ClassInfoParams,
   ClassInfoRow,
+  ElsTimetableRow,
+  HisTimetableRow,
   MealServiceDietInfoParams,
   MealServiceDietInfoRow,
+  MisTimetableRow,
   NeisApiResponse,
   SchoolInfoParams,
   SchoolInfoRow,
+  SchoolMajorInfoParams,
+  SchoolMajorInfoRow,
   SchoolScheduleParams,
   SchoolScheduleRow,
+  SchulAflcoInfoParams,
+  SchulAflcoInfoRow,
+  SpsTimetableRow,
+  TiClrmInfoParams,
+  TiClrmInfoRow,
+  TimetableParams,
+  TimetableRow,
 } from "./types.js";
 
 const NEIS_BASE = "https://open.neis.go.kr/hub";
 const DEFAULT_TIMEOUT_MS = 10_000;
+const MAX_PAGES = 100;
 
 export interface NeisClientOptions {
   /** NEIS Open API key. When omitted, requests are sent anonymously (stricter rate limits apply). */
@@ -30,8 +45,52 @@ function extractRows<T>(data: NeisApiResponse<T>, key: string): T[] {
   return section;
 }
 
+function extractTotal<T>(data: NeisApiResponse<T>, key: string): number {
+  const head = data[key]?.[0]?.head;
+  if (!Array.isArray(head) || head.length === 0) return 0;
+  const first = head[0] as { list_total_count?: number } | undefined;
+  return typeof first?.list_total_count === "number" ? first.list_total_count : 0;
+}
+
+function yearOf(value: string | number | undefined): number | undefined {
+  if (value === undefined || value === null) return undefined;
+  const text = String(value);
+  if (text.length < 4) return undefined;
+  const year = Number(text.slice(0, 4));
+  return Number.isFinite(year) ? year : undefined;
+}
+
+/** Pre-2023 timetable rows live on the `*Timetablebgs` endpoints. */
+export function isLegacyTimetable(params: TimetableParams): boolean {
+  const years = [
+    yearOf(params.AY),
+    yearOf(params.ALL_TI_YMD),
+    yearOf(params.TI_FROM_YMD),
+    yearOf(params.TI_TO_YMD),
+  ].filter((year): year is number => year !== undefined);
+  return years.some((year) => year < 2023);
+}
+
+export type SchoolTimetableKind = "els" | "mis" | "his" | "sps";
+
 /**
- * Async client for the NEIS Open API (school info, classes, meals, calendar).
+ * Map NEIS `SCHUL_KND_SC_NM` (학교종류명) onto the matching timetable endpoint.
+ */
+export function timetableKindFromSchool(
+  schoolKindName: string | undefined,
+): SchoolTimetableKind {
+  const kind = schoolKindName ?? "";
+  if (kind.includes("초등")) return "els";
+  if (kind.includes("중학")) return "mis";
+  if (kind.includes("특수")) return "sps";
+  if (kind.includes("고등")) return "his";
+  return "his";
+}
+
+/**
+ * Async client for the NEIS Open API (school info, classes, meals, calendar, timetables).
+ *
+ * Method names match the Python `neispy` package.
  */
 export class NeisClient {
   private readonly key?: string;
@@ -86,31 +145,139 @@ export class NeisClient {
     return data;
   }
 
+  private async requestRows<T>(
+    endpoint: string,
+    key: string,
+    params: object,
+  ): Promise<T[]> {
+    const all: T[] = [];
+    let page = this.pIndex;
+
+    for (let i = 0; i < MAX_PAGES; i += 1) {
+      const data = await this.request<T>(endpoint, {
+        ...params,
+        pIndex: page,
+        pSize: this.pSize,
+      });
+      const rows = extractRows(data, key);
+      all.push(...rows);
+      const total = extractTotal(data, key);
+      if (total <= 0 || all.length >= total || rows.length === 0) break;
+      page += 1;
+    }
+
+    return all;
+  }
+
+  private timetableEndpoint(kind: SchoolTimetableKind, params: TimetableParams): string {
+    const suffix = isLegacyTimetable(params) ? "bgs" : "";
+    return `/${kind}Timetable${suffix}`;
+  }
+
   schoolInfo(params: SchoolInfoParams = {}): Promise<SchoolInfoRow[]> {
-    return this.request<SchoolInfoRow>("/schoolInfo", params).then((data) =>
-      extractRows(data, "schoolInfo"),
-    );
+    return this.requestRows<SchoolInfoRow>("/schoolInfo", "schoolInfo", params);
   }
 
   classInfo(params: ClassInfoParams): Promise<ClassInfoRow[]> {
-    return this.request<ClassInfoRow>("/classInfo", params).then((data) =>
-      extractRows(data, "classInfo"),
-    );
+    return this.requestRows<ClassInfoRow>("/classInfo", "classInfo", params);
   }
 
   mealServiceDietInfo(
     params: MealServiceDietInfoParams,
   ): Promise<MealServiceDietInfoRow[]> {
-    return this.request<MealServiceDietInfoRow>(
+    return this.requestRows<MealServiceDietInfoRow>(
       "/mealServiceDietInfo",
+      "mealServiceDietInfo",
       params,
-    ).then((data) => extractRows(data, "mealServiceDietInfo"));
+    );
   }
 
   schoolSchedule(params: SchoolScheduleParams): Promise<SchoolScheduleRow[]> {
-    return this.request<SchoolScheduleRow>("/SchoolSchedule", params).then(
-      (data) => extractRows(data, "SchoolSchedule"),
+    return this.requestRows<SchoolScheduleRow>(
+      "/SchoolSchedule",
+      "SchoolSchedule",
+      params,
     );
+  }
+
+  acaInsTiInfo(params: AcaInsTiInfoParams): Promise<AcaInsTiInfoRow[]> {
+    return this.requestRows<AcaInsTiInfoRow>("/acaInsTiInfo", "acaInsTiInfo", params);
+  }
+
+  elsTimetable(params: TimetableParams): Promise<ElsTimetableRow[]> {
+    return this.requestRows<ElsTimetableRow>(
+      this.timetableEndpoint("els", params),
+      "elsTimetable",
+      params,
+    );
+  }
+
+  misTimetable(params: TimetableParams): Promise<MisTimetableRow[]> {
+    return this.requestRows<MisTimetableRow>(
+      this.timetableEndpoint("mis", params),
+      "misTimetable",
+      params,
+    );
+  }
+
+  hisTimetable(params: TimetableParams): Promise<HisTimetableRow[]> {
+    return this.requestRows<HisTimetableRow>(
+      this.timetableEndpoint("his", params),
+      "hisTimetable",
+      params,
+    );
+  }
+
+  spsTimetable(params: TimetableParams): Promise<SpsTimetableRow[]> {
+    return this.requestRows<SpsTimetableRow>(
+      this.timetableEndpoint("sps", params),
+      "spsTimetable",
+      params,
+    );
+  }
+
+  /**
+   * Dispatch to els/mis/his/sps timetable using `SCHUL_KND_SC_NM`.
+   */
+  schoolTimetable(
+    schoolKindName: string | undefined,
+    params: TimetableParams,
+  ): Promise<TimetableRow[]> {
+    const kind = timetableKindFromSchool(schoolKindName);
+    switch (kind) {
+      case "els":
+        return this.elsTimetable(params);
+      case "mis":
+        return this.misTimetable(params);
+      case "his":
+        return this.hisTimetable(params);
+      case "sps":
+        return this.spsTimetable(params);
+      default: {
+        const exhaustive: never = kind;
+        throw new Error(`Unhandled timetable kind: ${String(exhaustive)}`);
+      }
+    }
+  }
+
+  schoolMajorinfo(params: SchoolMajorInfoParams): Promise<SchoolMajorInfoRow[]> {
+    return this.requestRows<SchoolMajorInfoRow>(
+      "/schoolMajorinfo",
+      "schoolMajorinfo",
+      params,
+    );
+  }
+
+  schulAflcoinfo(params: SchulAflcoInfoParams): Promise<SchulAflcoInfoRow[]> {
+    return this.requestRows<SchulAflcoInfoRow>(
+      "/schulAflcoinfo",
+      "schulAflcoinfo",
+      params,
+    );
+  }
+
+  tiClrminfo(params: TiClrmInfoParams): Promise<TiClrmInfoRow[]> {
+    return this.requestRows<TiClrmInfoRow>("/tiClrminfo", "tiClrminfo", params);
   }
 }
 

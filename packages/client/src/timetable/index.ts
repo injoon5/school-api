@@ -5,6 +5,7 @@ import {
   TimetableParseError,
   TimetableSchoolNotFoundError,
 } from "./errors.js";
+import { fetchNeisTimeTable } from "./neis.js";
 import type { FetchTimeTableOptions, TimeTableData, TimeTableResult } from "./types.js";
 
 export type {
@@ -12,7 +13,16 @@ export type {
   Lecture,
   TimeTableData,
   TimeTableResult,
+  TimetableSource,
 } from "./types.js";
+export {
+  fetchNeisTimeTable,
+  mapNeisTimetableRows,
+  weekYmdRange,
+  formatYmdDash,
+  kstYmd,
+} from "./neis.js";
+export type { FetchNeisTimeTableOptions } from "./neis.js";
 export {
   TimetableAmbiguousSchoolError,
   TimetableError,
@@ -201,11 +211,16 @@ function getStringList(resp: ComciganResponse, code: string): string[] {
 }
 
 /**
- * Fetch a weekly class timetable from Comcigan (컴시간).
+ * Fetch a weekly class timetable from Comcigan (컴시간), or from NEIS when
+ * `source` is `"neis"`.
  */
 export async function fetchTimeTable(
   options: FetchTimeTableOptions,
 ): Promise<TimeTableResult> {
+  if ((options.source ?? "comcigan") === "neis") {
+    return fetchNeisTimeTable(options);
+  }
+
   const weekNum = options.weekNum ?? 0;
   if (weekNum !== 0 && weekNum !== 1) {
     throw new TimetableInvalidWeekError(weekNum);

@@ -25,6 +25,8 @@ export interface TimeTableResult {
   homeroomTeachers: string[][];
 }
 
+export type TimetableSource = "comcigan" | "neis";
+
 export interface FetchTimeTableOptions {
   schoolName: string;
   localCode?: number;
@@ -32,4 +34,12 @@ export interface FetchTimeTableOptions {
   schoolCode?: number;
   /** 0 = current week, 1 = next week */
   weekNum?: number;
+  /**
+   * `comcigan` (default) scrapes 컴시간. `neis` uses the official
+   * his/mis/els/spsTimetable Open API. NEIS leaves teacher names, period
+   * times, and substitution originals blank — those fields are not published.
+   */
+  source?: TimetableSource;
+  /** NEIS API key; used when `source` is `neis`. */
+  key?: string;
 }

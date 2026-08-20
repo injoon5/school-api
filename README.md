@@ -1,6 +1,6 @@
 # TimeForSchool API
 
-TypeScript API for NEIS school data (school info, classes, lunch, schedule) and Comcigan timetables.
+TypeScript API for NEIS school data (school info, classes, lunch, schedule, official timetables) and Comcigan timetables.
 
 Production: https://api.timefor.school
 
@@ -11,7 +11,7 @@ Built with [Elysia](https://elysiajs.com). Interactive reference UI is [Scalar](
 | Package | Path | Description |
 |---------|------|-------------|
 | `timeforschool-api` | repo root | HTTP API (`src/`) |
-| `@timeforschool/client` | `packages/client/` | NEIS + Comcigan client library (publishable to npm) |
+| `@timeforschool/client` | `packages/client/` | NEIS + Comcigan/NEIS timetable client (publishable to npm) |
 | `@timeforschool/docs` | `apps/docs/` | Fumadocs site (client + OpenAPI reference) |
 
 ## Documentation site
@@ -120,7 +120,7 @@ Errors use a consistent JSON shape and HTTP status code:
 | `MISSING_SCHOOL_IDENTIFIER` | 400 | Neither `schoolname` nor `schoolcode` sent |
 | `SCHOOL_NOT_FOUND` | 404 | NEIS has no matching school |
 | `NEIS_DATA_NOT_FOUND` | 404 | NEIS returned no rows for the date range |
-| `TIMETABLE_INVALID_GRADE_CLASS` | 404 | No Comcigan data for grade/class |
+| `TIMETABLE_INVALID_GRADE_CLASS` | 404 | No timetable for grade/class |
 | `TIMETABLE_AMBIGUOUS_SCHOOL` | 409 | Multiple Comcigan matches—use `schoolcode` |
 | `NEIS_UPSTREAM_ERROR` | 502 | NEIS API failure |
 | `TIMETABLE_UPSTREAM_ERROR` | 502 | Comcigan fetch/parse failure |
@@ -133,7 +133,7 @@ Errors use a consistent JSON shape and HTTP status code:
 | `GET /` | Service metadata and doc links |
 | `GET /school` | School info (`schoolname`) |
 | `GET /classes` | Class numbers (`grade`, `schoolname` or `schoolcode`) |
-| `GET /timetable` | Weekly timetable (`grade`, `classno`, `week`, `schoolname` or `schoolcode`) |
+| `GET /timetable` | Weekly timetable (`grade`, `classno`, `week`, `source=comcigan\|neis`, `schoolname` or `schoolcode`) |
 | `GET /lunch` | Meal menus (`startdate`, `enddate`, `schoolname` or `schoolcode`) |
 | `GET /schedule` | School calendar (`startdate`, `enddate`, `schoolname` or `schoolcode`) |
 

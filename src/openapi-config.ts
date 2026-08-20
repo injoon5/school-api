@@ -1,7 +1,7 @@
 import { API_VERSION } from "./config.js";
 
 const API_DESCRIPTION = `
-TimeForSchool wraps the Korean **NEIS Open API** (school info, classes, meals, calendar) and **Comcigan** (weekly class timetables).
+TimeForSchool wraps the Korean **NEIS Open API** (school info, classes, meals, calendar, official timetables) and **Comcigan** (weekly class timetables for schools that use 컴시간).
 
 ### School identifier
 Use **either** \`schoolname\` **or** \`schoolcode\` (NEIS 7-digit code)—never both. No endpoint defaults to a particular school; \`GET /school\` requires \`schoolname\`.
@@ -36,7 +36,7 @@ export const openApiPluginConfig = {
       { name: "Meta", description: "Service metadata" },
       { name: "School", description: "NEIS school profile" },
       { name: "Classes", description: "Class numbers by grade" },
-      { name: "Timetable", description: "Weekly timetable (Comcigan)" },
+      { name: "Timetable", description: "Weekly timetable (Comcigan or NEIS)" },
       { name: "Lunch", description: "Meal menus (NEIS)" },
       { name: "Schedule", description: "School calendar (NEIS)" },
     ],
@@ -51,7 +51,7 @@ export const openApiPluginConfig = {
     metadata: {
       title: "TimeForSchool API",
       description:
-        "NEIS school data and Comcigan timetables for Korean schools.",
+        "NEIS school data and Comcigan/NEIS timetables for Korean schools.",
     },
     servers: [...OPENAPI_SERVERS],
   },

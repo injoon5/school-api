@@ -9,13 +9,15 @@ The [`@timeforschool/client`](https://www.npmjs.com/package/@timeforschool/clien
 
 The production API at [api.timefor.school](https://api.timefor.school) mirrors these capabilities. Pass **`schoolname`** or **`schoolcode`** on endpoints that need a school—never both. No route defaults to a particular school (including `GET /school`, which requires `schoolname`).
 
+`GET /timetable` defaults to Comcigan. Pass **`source=neis`** for official NEIS timetables.
+
 ## Subpath exports
 
 | Import | Use case |
 | ------ | -------- |
 | `@timeforschool/client` | Full surface (NEIS + timetable) |
 | `@timeforschool/client/neis` | NEIS only |
-| `@timeforschool/client/timetable` | Comcigan timetable only |
+| `@timeforschool/client/timetable` | Comcigan / NEIS weekly timetable |
 
 ## Requirements
 
@@ -35,6 +37,8 @@ const school = schools[0];
 const table = await fetchTimeTable({
   schoolName: school.SCHUL_NM,
   weekNum: 0,
+  source: "neis",
+  key: process.env.NEIS_API_KEY,
 });
 ```
 

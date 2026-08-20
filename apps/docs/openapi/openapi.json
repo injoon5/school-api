@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "TimeForSchool API",
-    "description": "TimeForSchool wraps the Korean **NEIS Open API** (school info, classes, meals, calendar) and **Comcigan** (weekly class timetables).\n\n### School identifier\nUse **either** `schoolname` **or** `schoolcode` (NEIS 7-digit code)—never both. No endpoint defaults to a particular school; `GET /school` requires `schoolname`.\n\n### Dates\n`startdate` / `enddate` use **YYYYMMDD** (e.g. `20250526`).\n\n### Errors\nFailed requests return `{ ok: false, error: { code, message, details? } }` with an appropriate HTTP status.",
+    "description": "TimeForSchool wraps the Korean **NEIS Open API** (school info, classes, meals, calendar, official timetables) and **Comcigan** (weekly class timetables for schools that use 컴시간).\n\n### School identifier\nUse **either** `schoolname` **or** `schoolcode` (NEIS 7-digit code)—never both. No endpoint defaults to a particular school; `GET /school` requires `schoolname`.\n\n### Dates\n`startdate` / `enddate` use **YYYYMMDD** (e.g. `20250526`).\n\n### Errors\nFailed requests return `{ ok: false, error: { code, message, details? } }` with an appropriate HTTP status.",
     "version": "0.0.1"
   },
   "tags": [
@@ -20,7 +20,7 @@
     },
     {
       "name": "Timetable",
-      "description": "Weekly timetable (Comcigan)"
+      "description": "Weekly timetable (Comcigan or NEIS)"
     },
     {
       "name": "Lunch",
@@ -246,7 +246,7 @@
           "Timetable"
         ],
         "summary": "Weekly class timetable",
-        "description": "Fetches the class schedule from Comcigan. Provide schoolname, or schoolcode alone (name is resolved via NEIS). week: 0 = this week, 1 = next week. Most periods have `replaced: false` and `original: null`; when a period was substituted, `replaced` is true and `original` is the class before the change.",
+        "description": "Fetches the class schedule. Default source is Comcigan; pass `source=neis` for the official NEIS Open API (needed when a school does not use 컴시간). Provide schoolname, or schoolcode alone (name is resolved via NEIS). week: 0 = this week, 1 = next week. Most Comcigan periods have `replaced: false` and `original: null`; when a period was substituted, `replaced` is true and `original` is the class before the change. NEIS does not publish teacher names, period start times, or substitution originals — those fields are blank (`teacher: \"\"`, `day_time: []`, `original: null`).",
         "parameters": [
           {
             "name": "schoolname",
@@ -354,6 +354,18 @@
                   "description": "0 = current week, 1 = next week.",
                   "type": "number"
                 }
+              ]
+            }
+          },
+          {
+            "name": "source",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "comcigan",
+                "neis"
               ]
             }
           }
@@ -977,6 +989,7 @@
         ],
         "properties": {
           "day_time": {
+            "description": "Period start times from Comcigan. Empty when `source=neis` (NEIS does not publish bell times).",
             "examples": [
               [
                 "09:00",
@@ -1050,13 +1063,14 @@
                     "type": "string"
                   },
                   "teacher": {
+                    "description": "Teacher name from Comcigan. Empty string when `source=neis` (NEIS does not publish teachers).",
                     "examples": [
                       "김교사"
                     ],
                     "type": "string"
                   },
                   "replaced": {
-                    "description": "true only when this period was substituted; most periods are false.",
+                    "description": "true only when this period was substituted; most periods are false. Always false for `source=neis`.",
                     "examples": [
                       false
                     ],
@@ -1117,6 +1131,7 @@
             }
           },
           "update_date": {
+            "description": "Comcigan last-updated stamp, or NEIS LOAD_DTM as YYYY-MM-DD. Empty if NEIS omitted it.",
             "examples": [
               "2025-05-26"
             ],

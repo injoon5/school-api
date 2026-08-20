@@ -192,9 +192,13 @@ export const TimetableOriginalSchema = t.Union([
 export const TimetablePeriodSchema = t.Object({
   period: t.Number({ examples: [1] }),
   subject: t.String({ examples: ["수학"] }),
-  teacher: t.String({ examples: ["김교사"] }),
+  teacher: t.String({
+    description:
+      "Teacher name from Comcigan. Empty string when `source=neis` (NEIS does not publish teachers).",
+    examples: ["김교사"],
+  }),
   replaced: t.Boolean({
-    description: "true only when this period was substituted; most periods are false.",
+    description: "true only when this period was substituted; most periods are false. Always false for `source=neis`.",
     examples: [false],
   }),
   original: TimetableOriginalSchema,
@@ -202,6 +206,8 @@ export const TimetablePeriodSchema = t.Object({
 
 export const TimetableResponseSchema = t.Object({
   day_time: t.Array(t.String({ examples: ["09:00"] }), {
+    description:
+      "Period start times from Comcigan. Empty when `source=neis` (NEIS does not publish bell times).",
     examples: [["09:00", "09:50", "10:00"]],
   }),
   timetable: t.Array(t.Array(TimetablePeriodSchema), {
@@ -237,5 +243,9 @@ export const TimetableResponseSchema = t.Object({
       ],
     ],
   }),
-  update_date: t.String({ examples: ["2025-05-26"] }),
+  update_date: t.String({
+    description:
+      "Comcigan last-updated stamp, or NEIS LOAD_DTM as YYYY-MM-DD. Empty if NEIS omitted it.",
+    examples: ["2025-05-26"],
+  }),
 });

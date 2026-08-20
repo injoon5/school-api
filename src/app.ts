@@ -1,7 +1,7 @@
 import { cors } from "@elysiajs/cors";
 import { openapi } from "@elysiajs/openapi";
 import { openApiPluginConfig } from "./openapi-config.js";
-import { fetchTimeTable } from "@timeforschool/client";
+import { fetchNeisTimeTable, fetchTimeTable } from "@timeforschool/client";
 import { Elysia, type Static, t } from "elysia";
 import { API_VERSION, CORS_ORIGINS } from "./config.js";
 import { ApiError, ErrorCode } from "./errors/api-error.js";
@@ -12,6 +12,7 @@ import {
   Grade,
   SchoolName,
   SchoolQuery,
+  TimetableSource,
   Week,
 } from "./schemas/common.js";
 import {
@@ -181,20 +182,31 @@ export const app = new Elysia({ name: "timeforschool" })
       const grade = query.grade;
       const classno = query.classno;
       const week = query.week ?? 0;
+      const source = query.source ?? "comcigan";
 
-      let schoolName = schoolname;
-      if (!schoolName) {
-        if (!schoolcode) {
-          throw ApiError.missingSchoolIdentifier();
+      let timetable;
+      if (source === "neis") {
+        const school = await resolveSchool({ schoolname, schoolcode });
+        timetable = await fetchNeisTimeTable({
+          client: createNeisClient(),
+          school,
+          schoolName: school.SCHUL_NM,
+          weekNum: week,
+        });
+      } else {
+        let schoolName = schoolname;
+        if (!schoolName) {
+          if (!schoolcode) {
+            throw ApiError.missingSchoolIdentifier();
+          }
+          schoolName = await lookupSchoolNameByCode(schoolcode);
         }
-        schoolName = await lookupSchoolNameByCode(schoolcode);
+        timetable = await fetchTimeTable({
+          schoolName,
+          schoolCode: schoolcode ? Number(schoolcode) : undefined,
+          weekNum: week,
+        });
       }
-
-      const timetable = await fetchTimeTable({
-        schoolName,
-        schoolCode: schoolcode ? Number(schoolcode) : undefined,
-        weekNum: week,
-      });
 
       const weekDays = timetable.timetable[grade]?.[classno]?.slice(1);
       if (!weekDays?.length) {
@@ -202,7 +214,7 @@ export const app = new Elysia({ name: "timeforschool" })
           ErrorCode.TIMETABLE_INVALID_GRADE_CLASS,
           404,
           "No timetable found for this grade and class.",
-          { grade, classno, schoolname: schoolName },
+          { grade, classno, schoolname: timetable.schoolName, source },
         );
       }
 
@@ -219,13 +231,14 @@ export const app = new Elysia({ name: "timeforschool" })
           grade: Grade,
           classno: ClassNo,
           week: Week,
+          source: TimetableSource,
         }),
       ]),
       detail: {
         tags: ["Timetable"],
         summary: "Weekly class timetable",
         description:
-          "Fetches the class schedule from Comcigan. Provide schoolname, or schoolcode alone (name is resolved via NEIS). week: 0 = this week, 1 = next week. Most periods have `replaced: false` and `original: null`; when a period was substituted, `replaced` is true and `original` is the class before the change.",
+          "Fetches the class schedule. Default source is Comcigan; pass `source=neis` for the official NEIS Open API (needed when a school does not use 컴시간). Provide schoolname, or schoolcode alone (name is resolved via NEIS). week: 0 = this week, 1 = next week. Most Comcigan periods have `replaced: false` and `original: null`; when a period was substituted, `replaced` is true and `original` is the class before the change. NEIS does not publish teacher names, period start times, or substitution originals — those fields are blank (`teacher: \"\"`, `day_time: []`, `original: null`).",
       },
       response: {
         200: "TimetableResponse",
