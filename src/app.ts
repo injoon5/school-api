@@ -238,7 +238,7 @@ export const app = new Elysia({ name: "timeforschool" })
         tags: ["Timetable"],
         summary: "Weekly class timetable",
         description:
-          "Fetches the class schedule. Default source is Comcigan; pass `source=neis` for the official NEIS Open API (needed when a school does not use 컴시간). Provide schoolname, or schoolcode alone (name is resolved via NEIS). week: 0 = this week, 1 = next week. Most Comcigan periods have `replaced: false` and `original: null`; when a period was substituted, `replaced` is true and `original` is the class before the change. NEIS does not publish teacher names, period start times, or substitution originals — those fields are blank (`teacher: \"\"`, `day_time: []`, `original: null`).",
+          "Fetches the class schedule. Default and preferred source is Comcigan (컴시간): it is updated more often and includes teachers, period times, and substitutions. Pass `source=neis` only for schools that do not use Comcigan. Provide schoolname, or schoolcode alone (name is resolved via NEIS). week: 0 = this week, 1 = next week. Most Comcigan periods have `replaced: false` and `original: null`; when a period was substituted, `replaced` is true and `original` is the class before the change. NEIS is mapped onto that same shape; fields Comcigan has and NEIS does not (`teacher`, `day_time`, `original`) are left blank — do not expect Comcigan-quality data from `source=neis`.",
       },
       response: {
         200: "TimetableResponse",

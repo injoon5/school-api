@@ -1,6 +1,6 @@
 # TimeForSchool API
 
-TypeScript API for NEIS school data (school info, classes, lunch, schedule, official timetables) and Comcigan timetables.
+TypeScript API for NEIS school data (school info, classes, lunch, schedule) and Comcigan timetables (NEIS timetable as fallback).
 
 Production: https://api.timefor.school
 
@@ -133,7 +133,7 @@ Errors use a consistent JSON shape and HTTP status code:
 | `GET /` | Service metadata and doc links |
 | `GET /school` | School info (`schoolname`) |
 | `GET /classes` | Class numbers (`grade`, `schoolname` or `schoolcode`) |
-| `GET /timetable` | Weekly timetable (`grade`, `classno`, `week`, `source=comcigan\|neis`, `schoolname` or `schoolcode`) |
+| `GET /timetable` | Weekly timetable (`grade`, `classno`, `week`, `schoolname` or `schoolcode`; default Comcigan, `source=neis` fallback) |
 | `GET /lunch` | Meal menus (`startdate`, `enddate`, `schoolname` or `schoolcode`) |
 | `GET /schedule` | School calendar (`startdate`, `enddate`, `schoolname` or `schoolcode`) |
 

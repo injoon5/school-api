@@ -137,7 +137,8 @@ function periodsForDay(rows: TimetableRow[]): TimeTableData[] {
 /**
  * Fold NEIS timetable rows into the Comcigan `TimeTableResult` grid.
  *
- * Unavailable on NEIS (left blank):
+ * Comcigan stays the source of truth for this shape. NEIS only fills it in.
+ * Unavailable on NEIS (left blank — not invented, Comcigan not stripped):
  * - `teacher` — NEIS does not publish teacher names
  * - `dayTime` — period start times are not in the Open API
  * - `replaced` / `original` — no substitution original
@@ -152,6 +153,7 @@ export function mapNeisTimetableRows(
 ): TimeTableResult {
   const data: TimeTableData[][][][] = [[]];
   const byGradeClassDay = new Map<string, TimetableRow[]>();
+  const saturdayByClass = new Set<string>();
   let latestLoad = "";
   let schoolYear = Number(rows[0]?.AY);
   if (!Number.isFinite(schoolYear)) schoolYear = Number(meta.mondayYmd.slice(0, 4));
@@ -163,18 +165,19 @@ export function mapNeisTimetableRows(
     if (!Number.isFinite(classNo) || classNo < 1) continue;
     const ymd = row.ALL_TI_YMD;
     if (!ymd) continue;
+    const weekday = weekdayFromYmd(ymd);
+    if (weekday < 1 || weekday > 6) continue;
     const key = `${grade}:${classNo}:${ymd}`;
     const bucket = byGradeClassDay.get(key);
     if (bucket) bucket.push(row);
     else byGradeClassDay.set(key, [row]);
     if (row.LOAD_DTM && row.LOAD_DTM > latestLoad) latestLoad = row.LOAD_DTM;
+    if (weekday === 6) saturdayByClass.add(`${grade}:${classNo}`);
   }
 
-  const saturdayUsed = [...byGradeClassDay.keys()].some((key) => {
-    const ymd = key.split(":")[2];
-    return ymd !== undefined && weekdayFromYmd(ymd) === 6;
-  });
-  const lastDay = saturdayUsed ? 6 : 5;
+  function lastDayFor(grade: number, classNo: number): number {
+    return saturdayByClass.has(`${grade}:${classNo}`) ? 6 : 5;
+  }
 
   for (const [key, dayRows] of byGradeClassDay) {
     const [gradeText, classText, ymd] = key.split(":");
@@ -182,9 +185,9 @@ export function mapNeisTimetableRows(
     const classNo = Number(classText);
     if (ymd === undefined) continue;
     const weekday = weekdayFromYmd(ymd);
-    if (weekday === 0) continue;
     ensureGrid(data, grade, classNo);
     const days = data[grade][classNo];
+    const lastDay = lastDayFor(grade, classNo);
     while (days.length <= lastDay) days.push([]);
     days[weekday] = periodsForDay(dayRows);
   }
@@ -193,6 +196,7 @@ export function mapNeisTimetableRows(
     for (let classNo = 1; classNo < data[grade].length; classNo += 1) {
       const days = data[grade][classNo];
       if (!days) continue;
+      const lastDay = lastDayFor(grade, classNo);
       while (days.length <= lastDay) days.push([]);
     }
   }

@@ -35,9 +35,10 @@ export interface FetchTimeTableOptions {
   /** 0 = current week, 1 = next week */
   weekNum?: number;
   /**
-   * `comcigan` (default) scrapes 컴시간. `neis` uses the official
-   * his/mis/els/spsTimetable Open API. NEIS leaves teacher names, period
-   * times, and substitution originals blank — those fields are not published.
+   * `comcigan` (default, preferred) scrapes 컴시간 — fresher updates, teachers,
+   * bell times, substitutions. `neis` is a fallback for schools that do not
+   * use Comcigan. NEIS is mapped onto the Comcigan result shape; fields the
+   * Open API does not publish are left blank.
    */
   source?: TimetableSource;
   /** NEIS API key; used when `source` is `neis`. */

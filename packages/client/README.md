@@ -2,8 +2,9 @@
 
 TypeScript client for Korean school data APIs:
 
-- **NEIS Open API** — school profiles, classes, lunch menus, calendars, official timetables
-- **Comcigan** — weekly class timetables (schools that use 컴시간)
+- **NEIS Open API** — school profiles, classes, lunch menus, calendars
+- **Comcigan** — weekly class timetables (preferred when the school uses 컴시간)
+- **NEIS timetable** — fallback via `source: "neis"` when the school does not use Comcigan
 
 ## Install
 
@@ -95,7 +96,7 @@ const grade1Class3 = table.timetable[1][3].slice(1); // weekdays only
 console.log(table.dayTime, table.updateDate);
 ```
 
-NEIS leaves `teacher`, `dayTime`, `homeroomTeachers`, and substitution `original` blank — those fields are not in the Open API. Use `source: "neis"` for schools that do not use 컴시간.
+NEIS leaves `teacher`, `dayTime`, `homeroomTeachers`, and substitution `original` blank — those fields are not in the Open API. Keep `source` omitted (Comcigan) when the school uses 컴시간; it is updated better. Use `source: "neis"` only as a fallback.
 
 Subpath import: `@timeforschool/client/timetable`
 

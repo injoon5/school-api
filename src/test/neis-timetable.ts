@@ -62,7 +62,7 @@ async function run(): Promise<void> {
     }
   }
   shapeNotes("양정고 neis", yangjeongNeis.body);
-  console.log("✓ 양정고 comcigan + neis same response keys");
+  console.log("✓ 양정고 comcigan preferred; neis fills the same keys (blanks where NEIS has no data)");
 
   const hafsComcigan = await requestJson(
     app,

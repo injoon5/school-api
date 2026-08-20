@@ -211,8 +211,8 @@ function getStringList(resp: ComciganResponse, code: string): string[] {
 }
 
 /**
- * Fetch a weekly class timetable from Comcigan (컴시간), or from NEIS when
- * `source` is `"neis"`.
+ * Fetch a weekly class timetable from Comcigan (default, preferred), or from
+ * NEIS when `source` is `"neis"` (fallback for schools that do not use 컴시간).
  */
 export async function fetchTimeTable(
   options: FetchTimeTableOptions,
