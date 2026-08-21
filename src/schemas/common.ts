@@ -57,7 +57,7 @@ export const Week = t.Optional(
 export const TimetableSource = t.Optional(
   t.Union([t.Literal("auto"), t.Literal("comcigan"), t.Literal("neis")], {
     description:
-      "Timetable source. `auto` (default) fetches Comcigan and NEIS together. If only one has subjects, that result is used; otherwise shorter subject wins and weekday gaps fill from the other. NEIS Saturday is ignored. Pin `comcigan` or `neis` for a single upstream.",
+      "Timetable source. `auto` (default) fetches Comcigan and NEIS together and merges per period: whichever side has a subject, shorter name when both do, weekday gaps fill from the other. NEIS Saturday is ignored. Pin `comcigan` or `neis` for a single upstream.",
   }),
 );
 

@@ -3,7 +3,7 @@
 TypeScript client for Korean school data APIs:
 
 - **NEIS Open API** — school profiles, classes, lunch menus, calendars
-- **Comcigan + NEIS timetables** — `fetchTimeTable` defaults to `source: "auto"` (one source if the other is empty; otherwise shorter subject wins and weekday gaps fill). Pin `comcigan` or `neis` to call one upstream.
+- **Comcigan + NEIS timetables** — `fetchTimeTable` defaults to `source: "auto"` (merge per period: whichever side has a subject; shorter name when both do). Pin `comcigan` or `neis` to call one upstream.
 
 ## Install
 
@@ -96,7 +96,7 @@ const grade1Class3 = table.timetable[1][3].slice(1); // Mon–Fri
 console.log(table.dayTime, table.updateDate);
 ```
 
-Default merge: if only one source has subjects, that result is used as-is. Otherwise shorter subject wins, missing weekdays/periods fill from the other source, cancelled Comcigan periods stay cancelled. NEIS Saturday (`토요휴업일`) is dropped. NEIS leaves `teacher`, `dayTime`, `homeroomTeachers`, and `original` blank when Comcigan has nothing to overlay.
+Default merge: per period, use whichever source has a subject (empty/cancelled Comcigan still fills from NEIS). When both have subjects, shorter name wins. Missing weekdays/periods fill from the other source. NEIS Saturday (`토요휴업일`) is dropped. NEIS leaves `teacher`, `dayTime`, `homeroomTeachers`, and `original` blank when Comcigan has nothing to overlay.
 
 Subpath import: `@timeforschool/client/timetable`
 

@@ -38,10 +38,10 @@ export interface FetchTimeTableOptions {
   /** 0 = current week, 1 = next week */
   weekNum?: number;
   /**
-   * `auto` (default) fetches Comcigan and NEIS in parallel. If only one
-   * source has subjects, that result is used as-is; otherwise shorter
-   * subject wins and gaps fill from the other. NEIS Saturday is dropped
-   * (stale 토요휴업일). Pin `comcigan` or `neis` for one upstream.
+   * `auto` (default) fetches Comcigan and NEIS in parallel and merges per
+   * period: use whichever side has a subject, shorter name when both do,
+   * gaps fill from the other. NEIS Saturday is dropped (stale 토요휴업일).
+   * Pin `comcigan` or `neis` for one upstream.
    */
   source?: TimetableSource;
   /** NEIS API key; used when `source` is `neis` or `auto`. */

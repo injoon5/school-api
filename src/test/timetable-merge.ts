@@ -11,7 +11,6 @@ import {
   mergePeriod,
   mergeTimeTableResults,
   pickMergedTimeTable,
-  timetableHasSubjects,
   TimetableAmbiguousSchoolError,
   TimetableSchoolNotFoundError,
   type TimeTableData,
@@ -85,15 +84,28 @@ function run(): void {
     period({
       period: 1,
       subject: "",
-      teacher: "",
+      teacher: "박",
       replaced: true,
       original: { period: 1, subject: "국어", teacher: "박" },
     }),
     period({ period: 1, subject: "여름방학" }),
   );
-  assert(cancelled?.subject === "", "cancelled Comcigan period is not filled");
-  assert(cancelled?.replaced === true, "cancelled replaced flag kept");
-  assert(cancelled?.original?.subject === "국어", "cancelled original kept");
+  assert(cancelled?.subject === "여름방학", "cancelled Comcigan fills from NEIS subject");
+  assert(cancelled?.teacher === "박", "Comcigan teacher kept when filling");
+  assert(cancelled?.replaced === false, "NEIS fill is not a cancellation");
+
+  const stillCancelled = mergePeriod(
+    period({
+      period: 1,
+      subject: "",
+      teacher: "",
+      replaced: true,
+      original: { period: 1, subject: "국어", teacher: "박" },
+    }),
+    period({ period: 1, subject: "" }),
+  );
+  assert(stillCancelled?.subject === "", "cancellation kept when NEIS also empty");
+  assert(stillCancelled?.replaced === true, "replaced flag kept when neither has a subject");
 
   const sun: TimeTableData[] = [];
   const monCom = [period({ period: 1, subject: "국", teacher: "김" })];
@@ -121,7 +133,8 @@ function run(): void {
   assert(week[1][0].subject === "국", "shorter Monday subject");
   assert(week[1][1].subject === "과학", "missing Monday period 2 filled");
   assert(week[2][0].subject === "영어", "empty Tuesday filled from NEIS");
-  assert(week[3][0].subject === "", "Wednesday cancellation kept");
+  assert(week[3][0].subject === "여름방학", "Wednesday cancellation fills from NEIS");
+  assert(week[3][0].replaced === false, "filled Wednesday is not cancelled");
   assert(week[4][0].subject === "공영B", "Thursday shorter NEIS name");
   assert(week[4][0].teacher === "최", "Thursday teacher from Comcigan");
   assert(week[5][0].subject === "체육", "Friday tie keeps Comcigan");
@@ -203,12 +216,13 @@ function run(): void {
   });
   const neisWithData = result(
     classWeek([[], [period({ period: 1, subject: "국어" })]]),
-    { schoolName: "나이스만", dayTime: [], homeroomTeachers: [] },
+    { schoolName: "", dayTime: [], homeroomTeachers: [], updateDate: "2026-08-17" },
   );
-  const onlyNeis = mergeTimeTableResults(emptyComcigan, neisWithData);
-  assert(onlyNeis.schoolName === "나이스만", "empty Comcigan yields to NEIS");
-  assert(onlyNeis.timetable[1][1][1][0].subject === "국어", "NEIS period kept as-is");
-  assert(onlyNeis.dayTime.length === 0, "NEIS-only keeps blank bell times");
+  const filledGrid = mergeTimeTableResults(emptyComcigan, neisWithData);
+  assert(filledGrid.schoolName === "컴시간만", "empty Comcigan grid still keeps its metadata");
+  assert(filledGrid.timetable[1][1][1][0].subject === "국어", "NEIS period fills empty Comcigan grid");
+  assert(filledGrid.dayTime[0] === "1(08:10)", "Comcigan bell times kept while filling periods");
+  assert(filledGrid.homeroomTeachers[0][0] === "김", "Comcigan homeroom kept");
 
   const cancelledOnly = result(
     classWeek([
@@ -217,7 +231,7 @@ function run(): void {
         period({
           period: 1,
           subject: "",
-          teacher: "",
+          teacher: "김",
           replaced: true,
           original: { period: 1, subject: "국", teacher: "김" },
         }),
@@ -225,37 +239,35 @@ function run(): void {
     ]),
     { schoolName: "휴업" },
   );
-  const onlyNeisOverCancel = mergeTimeTableResults(cancelledOnly, neisWithData);
-  assert(
-    onlyNeisOverCancel.schoolName === "나이스만",
-    "cancelled-only Comcigan does not count as data",
-  );
+  const filledCancel = mergeTimeTableResults(cancelledOnly, neisWithData);
+  assert(filledCancel.schoolName === "휴업", "cancelled Comcigan still merges metadata");
+  assert(filledCancel.timetable[1][1][1][0].subject === "국어", "NEIS subject fills cancelled period");
+  assert(filledCancel.timetable[1][1][1][0].teacher === "김", "Comcigan teacher kept on filled cancel");
 
   const comciganWithData = result(
     classWeek([[], [period({ period: 1, subject: "국", teacher: "김" })]]),
     { schoolName: "컴시간", dayTime: ["1(08:10)"] },
   );
   const emptyNeis = result(emptyGrid(), {
-    schoolName: "나이스빈",
+    schoolName: "",
     dayTime: [],
     homeroomTeachers: [],
   });
-  const onlyComcigan = mergeTimeTableResults(comciganWithData, emptyNeis);
-  assert(onlyComcigan.schoolName === "컴시간", "empty NEIS yields to Comcigan");
-  assert(onlyComcigan.timetable[1][1][1][0].teacher === "김", "Comcigan teacher kept");
-  assert(onlyComcigan.dayTime[0] === "1(08:10)", "Comcigan bell times kept");
+  const filledFromCom = mergeTimeTableResults(comciganWithData, emptyNeis);
+  assert(filledFromCom.schoolName === "컴시간", "empty NEIS does not wipe Comcigan");
+  assert(filledFromCom.timetable[1][1][1][0].teacher === "김", "Comcigan teacher kept");
+  assert(filledFromCom.dayTime[0] === "1(08:10)", "Comcigan bell times kept");
   const pickedNeis = pickMergedTimeTable(
     { status: "fulfilled", value: emptyComcigan },
     { status: "fulfilled", value: neisWithData },
   );
-  assert(pickedNeis.schoolName === "나이스만", "auto uses NEIS when Comcigan has no subjects");
+  assert(pickedNeis.schoolName === "컴시간만", "auto merges metadata even when Comcigan grid is empty");
+  assert(pickedNeis.timetable[1][1][1][0].subject === "국어", "auto still takes NEIS periods");
   const pickedCom = pickMergedTimeTable(
     { status: "fulfilled", value: comciganWithData },
     { status: "fulfilled", value: emptyNeis },
   );
-  assert(pickedCom.schoolName === "컴시간", "auto uses Comcigan when NEIS has no subjects");
-  assert(!timetableHasSubjects(emptyNeis.timetable), "empty NEIS fixture has no subjects");
-  assert(!timetableHasSubjects(cancelledOnly.timetable), "cancelled-only is not data");
+  assert(pickedCom.schoolName === "컴시간", "auto keeps Comcigan when NEIS grid is empty");
 
   console.log("✓ timetable merge + school pick + NEIS Saturday drop");
 }
