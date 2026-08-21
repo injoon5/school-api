@@ -6,13 +6,9 @@ function shorterSubject(comcigan: string, neis: string): string {
   return comcigan.length <= neis.length ? comcigan : neis;
 }
 
-function isCancelled(entry: TimeTableData): boolean {
-  return entry.replaced && entry.subject.length === 0;
-}
-
 /**
- * Comcigan wins on a tie. Missing subject/teacher fills from NEIS.
- * Cancelled Comcigan periods stay cancelled.
+ * Comcigan wins on a tie. Empty subject/teacher fills from the other source.
+ * A cancelled Comcigan period (empty subject) still fills if NEIS has one.
  */
 export function mergePeriod(
   comcigan: TimeTableData | undefined,
@@ -20,7 +16,21 @@ export function mergePeriod(
 ): TimeTableData | undefined {
   if (!comcigan && !neis) return undefined;
   if (!comcigan) return { ...neis! };
-  if (!neis || isCancelled(comcigan)) return { ...comcigan };
+  if (!neis) return { ...comcigan };
+
+  if (!comcigan.subject && !neis.subject) return { ...comcigan };
+
+  if (!comcigan.subject) {
+    return {
+      period: comcigan.period || neis.period,
+      subject: neis.subject,
+      teacher: comcigan.teacher || neis.teacher,
+      replaced: neis.replaced,
+      original: neis.original,
+    };
+  }
+
+  if (!neis.subject) return { ...comcigan };
 
   return {
     period: comcigan.period || neis.period,
@@ -87,7 +97,7 @@ function firstNonEmpty(comcigan: string, neis: string): string {
   return comcigan.length > 0 ? comcigan : neis;
 }
 
-/** Overlay NEIS onto Comcigan. Comcigan metadata wins when present. */
+/** Overlay NEIS onto Comcigan. Per-period: use whichever side has a subject. */
 export function mergeTimeTableResults(
   comcigan: TimeTableResult,
   neis: TimeTableResult,

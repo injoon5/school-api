@@ -72,7 +72,8 @@ function fetchMergedTimeTable(
 
 /**
  * Weekly class timetable. Default `source` is `auto`: Comcigan + NEIS in
- * parallel, shorter subject wins, weekday gaps fill from the other. NEIS
+ * parallel, then merge per period (whichever side has a subject; shorter
+ * name wins when both do). Weekday/period gaps fill from the other. NEIS
  * Saturday is dropped in the mapper. Pin `comcigan` or `neis` for one upstream.
  */
 export async function fetchTimeTable(

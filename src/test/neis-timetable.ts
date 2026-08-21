@@ -10,7 +10,6 @@ import {
   assertTimetableResponse,
   isErrorBody,
   requestJson,
-  type TimetablePeriod,
   type TimetableResponse,
 } from "./helpers.js";
 
@@ -27,10 +26,6 @@ function shapeNotes(label: string, body: TimetableResponse): void {
   console.log(
     `  ${label}: days=${body.timetable.length} periods=${body.timetable.flat().length} day_time=${body.day_time.length} update_date=${body.update_date || "(blank)"} teachers=${hasTeacher ? "yes" : "blank"} replaced=${replaced.length}`,
   );
-}
-
-function isCancelled(period: TimetablePeriod): boolean {
-  return period.replaced && period.subject.length === 0;
 }
 
 async function run(): Promise<void> {
@@ -106,10 +101,6 @@ async function run(): Promise<void> {
     for (const autoPeriod of autoDay) {
       const com = byCom.get(autoPeriod.period);
       const neis = byNeis.get(autoPeriod.period);
-      if (com && isCancelled(com)) {
-        assert(autoPeriod.subject === "", "auto keeps Comcigan cancellation");
-        continue;
-      }
       const names = [com?.subject, neis?.subject].filter(
         (name): name is string => Boolean(name && name.length > 0),
       );
@@ -122,7 +113,7 @@ async function run(): Promise<void> {
     }
   }
   shapeNotes("양정고 auto", yangjeongAuto.body);
-  console.log("✓ 양정고 auto: shorter name wins, gaps fill, Saturday dropped, cancellations kept");
+  console.log("✓ 양정고 auto: shorter name wins, gaps fill, Saturday dropped");
 
   const hafsComcigan = await requestJson(
     app,

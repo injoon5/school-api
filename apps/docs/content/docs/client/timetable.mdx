@@ -1,6 +1,6 @@
 ---
 title: Timetable
-description: fetchTimeTable merges Comcigan + NEIS by default (shorter name wins)
+description: fetchTimeTable merges Comcigan + NEIS per period
 ---
 
 ```ts
@@ -13,11 +13,12 @@ import {
 // or: import { fetchTimeTable } from "@timeforschool/client/timetable";
 ```
 
-Default `source: "auto"` calls Comcigan and NEIS in parallel, then merges:
+Default `source: "auto"` calls Comcigan and NEIS in parallel, then merges **per period** — never picks one upstream wholesale:
 
-- Shorter non-empty **subject** wins (Comcigan on a tie)
+- If only one source has a **subject** for that period, use it (empty/cancelled Comcigan still fills from NEIS)
+- Shorter non-empty **subject** wins when both have one (Comcigan on a tie)
 - Missing weekdays/periods fill from the other source
-- Cancelled Comcigan periods (`replaced` + empty subject) are kept — not overwritten with NEIS placeholders like `여름방학`
+- Comcigan **teacher** / bell times / homeroom stay when present
 - **NEIS Saturday is dropped.** Schools do not have Saturday class; leftover `토요휴업일` rows are stale
 
 Pin `source: "comcigan"` or `source: "neis"` to hit a single upstream. NEIS is mapped onto the Comcigan result shape; fields the Open API does not publish stay blank. Comcigan output is never stripped to look like NEIS.
