@@ -134,7 +134,7 @@ Errors use a consistent JSON shape and HTTP status code:
 | `GET /` | Service metadata and doc links |
 | `GET /school` | School info (`schoolname`) |
 | `GET /classes` | Class numbers (`grade`, `schoolname` or `schoolcode`) |
-| `GET /timetable` | Weekly timetable (`grade`, `classno`, `week`, `schoolname` or `schoolcode`; default `source=auto` merge) |
+| `GET /timetable` | Weekly timetable (`grade`, `classno`, `week`, `schoolname` or `schoolcode`; default `source=auto`) |
 | `GET /lunch` | Meal menus (`startdate`, `enddate`, `schoolname` or `schoolcode`) |
 | `GET /schedule` | School calendar (`startdate`, `enddate`, `schoolname` or `schoolcode`) |
 

@@ -17,7 +17,11 @@ export type {
   TimetableSource,
 } from "./types.js";
 export { fetchNeisTimeTable, mapNeisTimetableRows } from "./neis.js";
-export { mergeTimeTableResults, mergePeriod } from "./merge.js";
+export {
+  mergeTimeTableResults,
+  mergePeriod,
+  timetableHasSubjects,
+} from "./merge.js";
 export type { FetchNeisTimeTableOptions } from "./neis.js";
 export {
   TimetableAmbiguousSchoolError,
@@ -36,6 +40,7 @@ function assertWeekNum(weekNum: number): void {
 /**
  * Combine Comcigan + NEIS `allSettled` results.
  * Comcigan name collisions stay 409 even when NEIS succeeded.
+ * Fulfilled-but-empty grids yield to the source that has subjects.
  */
 export function pickMergedTimeTable(
   comcigan: PromiseSettledResult<TimeTableResult>,
@@ -72,7 +77,8 @@ function fetchMergedTimeTable(
 
 /**
  * Weekly class timetable. Default `source` is `auto`: Comcigan + NEIS in
- * parallel, shorter subject wins, weekday gaps fill from the other. NEIS
+ * parallel. If only one source has subjects, that result is used as-is;
+ * otherwise shorter subject wins and weekday gaps fill from the other. NEIS
  * Saturday is dropped in the mapper. Pin `comcigan` or `neis` for one upstream.
  */
 export async function fetchTimeTable(

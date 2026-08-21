@@ -11,6 +11,7 @@ import {
   mergePeriod,
   mergeTimeTableResults,
   pickMergedTimeTable,
+  timetableHasSubjects,
   TimetableAmbiguousSchoolError,
   TimetableSchoolNotFoundError,
   type TimeTableData,
@@ -194,6 +195,67 @@ function run(): void {
     { status: "fulfilled", value: neisOnly },
   );
   assert(filledFromNeis.schoolName === "양정고등학교", "Comcigan 404 falls through to NEIS");
+
+  const emptyComcigan = result(emptyGrid(), {
+    schoolName: "컴시간만",
+    dayTime: ["1(08:10)"],
+    homeroomTeachers: [["김"]],
+  });
+  const neisWithData = result(
+    classWeek([[], [period({ period: 1, subject: "국어" })]]),
+    { schoolName: "나이스만", dayTime: [], homeroomTeachers: [] },
+  );
+  const onlyNeis = mergeTimeTableResults(emptyComcigan, neisWithData);
+  assert(onlyNeis.schoolName === "나이스만", "empty Comcigan yields to NEIS");
+  assert(onlyNeis.timetable[1][1][1][0].subject === "국어", "NEIS period kept as-is");
+  assert(onlyNeis.dayTime.length === 0, "NEIS-only keeps blank bell times");
+
+  const cancelledOnly = result(
+    classWeek([
+      [],
+      [
+        period({
+          period: 1,
+          subject: "",
+          teacher: "",
+          replaced: true,
+          original: { period: 1, subject: "국", teacher: "김" },
+        }),
+      ],
+    ]),
+    { schoolName: "휴업" },
+  );
+  const onlyNeisOverCancel = mergeTimeTableResults(cancelledOnly, neisWithData);
+  assert(
+    onlyNeisOverCancel.schoolName === "나이스만",
+    "cancelled-only Comcigan does not count as data",
+  );
+
+  const comciganWithData = result(
+    classWeek([[], [period({ period: 1, subject: "국", teacher: "김" })]]),
+    { schoolName: "컴시간", dayTime: ["1(08:10)"] },
+  );
+  const emptyNeis = result(emptyGrid(), {
+    schoolName: "나이스빈",
+    dayTime: [],
+    homeroomTeachers: [],
+  });
+  const onlyComcigan = mergeTimeTableResults(comciganWithData, emptyNeis);
+  assert(onlyComcigan.schoolName === "컴시간", "empty NEIS yields to Comcigan");
+  assert(onlyComcigan.timetable[1][1][1][0].teacher === "김", "Comcigan teacher kept");
+  assert(onlyComcigan.dayTime[0] === "1(08:10)", "Comcigan bell times kept");
+  const pickedNeis = pickMergedTimeTable(
+    { status: "fulfilled", value: emptyComcigan },
+    { status: "fulfilled", value: neisWithData },
+  );
+  assert(pickedNeis.schoolName === "나이스만", "auto uses NEIS when Comcigan has no subjects");
+  const pickedCom = pickMergedTimeTable(
+    { status: "fulfilled", value: comciganWithData },
+    { status: "fulfilled", value: emptyNeis },
+  );
+  assert(pickedCom.schoolName === "컴시간", "auto uses Comcigan when NEIS has no subjects");
+  assert(!timetableHasSubjects(emptyNeis.timetable), "empty NEIS fixture has no subjects");
+  assert(!timetableHasSubjects(cancelledOnly.timetable), "cancelled-only is not data");
 
   console.log("✓ timetable merge + school pick + NEIS Saturday drop");
 }

@@ -230,7 +230,7 @@ export const app = new Elysia({ name: "timeforschool-api" })
         tags: ["Timetable"],
         summary: "Weekly class timetable",
         description:
-          "Fetches the class schedule. Default `source=auto` calls Comcigan and NEIS in parallel and merges them: the shorter subject name wins, and missing weekdays/periods fill from the other source. Cancelled Comcigan periods are kept. NEIS Saturday is ignored (stale 토요휴업일). Pin `source=comcigan` or `source=neis` to hit a single upstream. Provide schoolname, or schoolcode alone. week: 0 = this week, 1 = next week. Comcigan substitutions use `replaced` + `original`. NEIS-only fields stay blank (`teacher`, `day_time`) when Comcigan has no data.",
+          "Fetches the class schedule. Default `source=auto` calls Comcigan and NEIS in parallel. If only one source has subjects, that result is used as-is; otherwise the shorter subject name wins and missing weekdays/periods fill from the other source. Cancelled Comcigan periods are kept when both sources have data. NEIS Saturday is ignored (stale 토요휴업일). Pin `source=comcigan` or `source=neis` to hit a single upstream. Provide schoolname, or schoolcode alone. week: 0 = this week, 1 = next week. Comcigan substitutions use `replaced` + `original`. NEIS-only fields stay blank (`teacher`, `day_time`) when Comcigan has no data.",
       },
       response: {
         200: "TimetableResponse",

@@ -4,7 +4,7 @@ const API_DESCRIPTION = `
 ${APP_NAME} wraps **Comcigan** and the Korean **NEIS Open API** (school info, classes, meals, calendar, timetables).
 
 ### Timetable source
-\`GET /timetable\` defaults to \`source=auto\`: both upstreams in parallel, shorter subject name wins, missing weekdays/periods fill from the other. NEIS Saturday is ignored. Pin \`source=comcigan\` or \`source=neis\` to call only one.
+\`GET /timetable\` defaults to \`source=auto\`: both upstreams in parallel. If only one has subjects, that result is used; otherwise shorter subject name wins and missing weekdays/periods fill from the other. NEIS Saturday is ignored. Pin \`source=comcigan\` or \`source=neis\` to call only one.
 
 ### School identifier
 Use **either** \`schoolname\` **or** \`schoolcode\` (NEIS 7-digit code)—never both. No endpoint defaults to a particular school; \`GET /school\` requires \`schoolname\`.

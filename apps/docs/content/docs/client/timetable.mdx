@@ -1,6 +1,6 @@
 ---
 title: Timetable
-description: fetchTimeTable merges Comcigan + NEIS by default (shorter name wins)
+description: fetchTimeTable uses one source if the other is empty, else merges
 ---
 
 ```ts
@@ -15,9 +15,10 @@ import {
 
 Default `source: "auto"` calls Comcigan and NEIS in parallel, then merges:
 
+- If only one source has any subjects, that result is used as-is
 - Shorter non-empty **subject** wins (Comcigan on a tie)
 - Missing weekdays/periods fill from the other source
-- Cancelled Comcigan periods (`replaced` + empty subject) are kept — not overwritten with NEIS placeholders like `여름방학`
+- Cancelled Comcigan periods (`replaced` + empty subject) are kept — not overwritten with NEIS placeholders like `여름방학` — when **both** sources have data
 - **NEIS Saturday is dropped.** Schools do not have Saturday class; leftover `토요휴업일` rows are stale
 
 Pin `source: "comcigan"` or `source: "neis"` to hit a single upstream. NEIS is mapped onto the Comcigan result shape; fields the Open API does not publish stay blank. Comcigan output is never stripped to look like NEIS.

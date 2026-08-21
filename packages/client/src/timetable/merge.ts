@@ -6,6 +6,23 @@ function shorterSubject(comcigan: string, neis: string): string {
   return comcigan.length <= neis.length ? comcigan : neis;
 }
 
+/** True if any period has a non-empty subject. Empty/cancelled grids don't count. */
+export function timetableHasSubjects(timetable: TimeTableData[][][][]): boolean {
+  for (const grade of timetable) {
+    if (!grade) continue;
+    for (const cls of grade) {
+      if (!cls) continue;
+      for (const day of cls) {
+        if (!day) continue;
+        for (const entry of day) {
+          if (entry.subject.length > 0) return true;
+        }
+      }
+    }
+  }
+  return false;
+}
+
 function isCancelled(entry: TimeTableData): boolean {
   return entry.replaced && entry.subject.length === 0;
 }
@@ -87,11 +104,15 @@ function firstNonEmpty(comcigan: string, neis: string): string {
   return comcigan.length > 0 ? comcigan : neis;
 }
 
-/** Overlay NEIS onto Comcigan. Comcigan metadata wins when present. */
+/** Overlay NEIS onto Comcigan when both have subjects. One-sided data is kept as-is. */
 export function mergeTimeTableResults(
   comcigan: TimeTableResult,
   neis: TimeTableResult,
 ): TimeTableResult {
+  const comHas = timetableHasSubjects(comcigan.timetable);
+  const neisHas = timetableHasSubjects(neis.timetable);
+  if (comHas !== neisHas) return comHas ? comcigan : neis;
+
   return {
     schoolCode: comcigan.schoolCode || neis.schoolCode,
     schoolName: firstNonEmpty(comcigan.schoolName, neis.schoolName),
