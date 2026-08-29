@@ -97,7 +97,10 @@ function firstNonEmpty(comcigan: string, neis: string): string {
   return comcigan.length > 0 ? comcigan : neis;
 }
 
-/** Overlay NEIS onto Comcigan. Per-period: use whichever side has a subject. */
+/**
+ * Overlay NEIS onto Comcigan. Per-period: use whichever side has a subject.
+ * `dayTime` is always Comcigan's, even when empty.
+ */
 export function mergeTimeTableResults(
   comcigan: TimeTableResult,
   neis: TimeTableResult,
@@ -109,7 +112,9 @@ export function mergeTimeTableResults(
     localName: firstNonEmpty(comcigan.localName, neis.localName),
     schoolYear: comcigan.schoolYear || neis.schoolYear,
     startDate: firstNonEmpty(comcigan.startDate, neis.startDate),
-    dayTime: comcigan.dayTime.length > 0 ? comcigan.dayTime : neis.dayTime,
+    // Bell times always come from Comcigan; NEIS has no period start times,
+    // so its dayTime is never a usable fallback.
+    dayTime: [...comcigan.dayTime],
     updateDate: firstNonEmpty(comcigan.updateDate, neis.updateDate),
     timetable: mergeGrids(comcigan.timetable, neis.timetable),
     homeroomTeachers:

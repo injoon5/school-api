@@ -20,8 +20,9 @@ _openapi:
           토요휴업일). Pin `source=comcigan` or `source=neis` to hit a single
           upstream. Provide schoolname, or schoolcode alone. week: 0 = this
           week, 1 = next week. Comcigan substitutions use `replaced` +
-          `original`. NEIS-only fields stay blank (`teacher`, `day_time`) when
-          Comcigan has no data.
+          `original`. `day_time` always comes from Comcigan and is blank when
+          Comcigan has none. `teacher` also stays blank when Comcigan has no
+          data.
         heading: weekly-class-timetable
 ---
 

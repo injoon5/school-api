@@ -96,7 +96,7 @@ const grade1Class3 = table.timetable[1][3].slice(1); // Mon–Fri
 console.log(table.dayTime, table.updateDate);
 ```
 
-Default merge: per period, use whichever source has a subject (empty/cancelled Comcigan still fills from NEIS). When both have subjects, shorter name wins. Missing weekdays/periods fill from the other source. NEIS Saturday (`토요휴업일`) is dropped. NEIS leaves `teacher`, `dayTime`, `homeroomTeachers`, and `original` blank when Comcigan has nothing to overlay.
+Default merge: per period, use whichever source has a subject (empty/cancelled Comcigan still fills from NEIS). When both have subjects, shorter name wins. Missing weekdays/periods fill from the other source. NEIS Saturday (`토요휴업일`) is dropped. `dayTime` is always Comcigan's (blank when Comcigan has none) — NEIS has no period start times. NEIS also leaves `teacher`, `homeroomTeachers`, and `original` blank when Comcigan has nothing to overlay.
 
 Subpath import: `@timeforschool/client/timetable`
 

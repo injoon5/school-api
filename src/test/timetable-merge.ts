@@ -257,6 +257,17 @@ function run(): void {
   assert(filledFromCom.schoolName === "컴시간", "empty NEIS does not wipe Comcigan");
   assert(filledFromCom.timetable[1][1][1][0].teacher === "김", "Comcigan teacher kept");
   assert(filledFromCom.dayTime[0] === "1(08:10)", "Comcigan bell times kept");
+
+  const noBellTimes = mergeTimeTableResults(
+    result(classWeek([[], [period({ period: 1, subject: "국", teacher: "김" })]]), {
+      dayTime: [],
+    }),
+    result(emptyGrid(), { dayTime: ["1(09:00)"] }),
+  );
+  assert(
+    noBellTimes.dayTime.length === 0,
+    "Comcigan day_time is used even when empty — never filled from NEIS",
+  );
   const pickedNeis = pickMergedTimeTable(
     { status: "fulfilled", value: emptyComcigan },
     { status: "fulfilled", value: neisWithData },
