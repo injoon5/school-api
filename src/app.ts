@@ -5,6 +5,7 @@ import { fetchTimeTable } from "@timeforschool/client";
 import { Elysia, type Static, t } from "elysia";
 import { API_VERSION, APP_NAME, CORS_ORIGINS, NEIS_API_KEY } from "./config.js";
 import { ApiError, ErrorCode } from "./errors/api-error.js";
+import { CacheControl, errorCacheControl, httpCache } from "./http/cache.js";
 import {
   ApiErrorSchema,
   ClassNo,
@@ -68,6 +69,10 @@ export const app = new Elysia({ name: "timeforschool-api" })
         },
       );
       set.status = apiError.status;
+      set.headers["cache-control"] = errorCacheControl(
+        apiError.status,
+        apiError.code,
+      );
       return apiError.toJSON();
     }
 
@@ -75,6 +80,10 @@ export const app = new Elysia({ name: "timeforschool-api" })
       error instanceof ApiError ? error : ApiError.fromUnknown(error);
 
     set.status = apiError.status;
+    set.headers["cache-control"] = errorCacheControl(
+      apiError.status,
+      apiError.code,
+    );
     return apiError.toJSON();
   })
   .get(
@@ -113,6 +122,7 @@ export const app = new Elysia({ name: "timeforschool-api" })
         description:
           "Returns all NEIS school records matching schoolname (required).",
       },
+      mapResponse: httpCache(CacheControl.directory),
       response: {
         200: "SchoolInfoList",
         400: "ApiError",
@@ -160,6 +170,7 @@ export const app = new Elysia({ name: "timeforschool-api" })
         description:
           "Returns sorted class names (반) for the given school and grade using NEIS classInfo.",
       },
+      mapResponse: httpCache(CacheControl.directory),
       response: {
         200: "ClassList",
         400: "ApiError",
@@ -232,6 +243,7 @@ export const app = new Elysia({ name: "timeforschool-api" })
         description:
           "Fetches the class schedule. Default `source=auto` calls Comcigan and NEIS in parallel and merges them per period: whichever side has a subject is used, the shorter name wins when both do, and missing weekdays/periods fill from the other source. Empty or cancelled Comcigan periods still fill from NEIS. NEIS Saturday is ignored (stale 토요휴업일). Pin `source=comcigan` or `source=neis` to hit a single upstream. Provide schoolname, or schoolcode alone. week: 0 = this week, 1 = next week. Comcigan substitutions use `replaced` + `original`. `day_time` always comes from Comcigan and is blank when Comcigan has none. `teacher` also stays blank when Comcigan has no data.",
       },
+      mapResponse: httpCache(CacheControl.timetable),
       response: {
         200: "TimetableResponse",
         400: "ApiError",
@@ -286,6 +298,7 @@ export const app = new Elysia({ name: "timeforschool-api" })
         description:
           "Returns NEIS mealServiceDietInfo rows. Parentheses are stripped from dish names; HTML line breaks become newlines.",
       },
+      mapResponse: httpCache(CacheControl.calendar),
       response: {
         200: "MealList",
         400: "ApiError",
@@ -330,6 +343,7 @@ export const app = new Elysia({ name: "timeforschool-api" })
         summary: "School calendar events",
         description: "Returns NEIS SchoolSchedule rows between startdate and enddate (inclusive).",
       },
+      mapResponse: httpCache(CacheControl.calendar),
       response: {
         200: "ScheduleList",
         400: "ApiError",

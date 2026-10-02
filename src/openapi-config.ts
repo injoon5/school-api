@@ -12,6 +12,9 @@ Use **either** \`schoolname\` **or** \`schoolcode\` (NEIS 7-digit code)—never 
 ### Dates
 \`startdate\` / \`enddate\` use **YYYYMMDD** (e.g. \`20250526\`).
 
+### HTTP caching
+Every \`200\` from \`/timetable\`, \`/lunch\`, \`/schedule\`, \`/school\` and \`/classes\` carries a strong \`ETag\` (SHA-256 of the body). Send it back as \`If-None-Match\` to get \`304 Not Modified\` with an empty body when nothing changed. \`Cache-Control\` keeps \`max-age=0\` (clients decide when to ask) and sets \`s-maxage\` for the CDN: 5 minutes for \`/timetable\`, 6 hours for \`/lunch\` and \`/schedule\`, 1 day for \`/school\` and \`/classes\`, 1 hour for \`404 NEIS_DATA_NOT_FOUND\`. Other errors are \`no-store\`.
+
 ### Errors
 Failed requests return \`{ ok: false, error: { code, message, details? } }\` with an appropriate HTTP status.
 `.trim();
