@@ -176,18 +176,28 @@ export const TimetableLectureSchema = t.Object({
 });
 
 /** Pre-substitution class; null when unchanged, object when replaced (may be partial). */
-export const TimetableOriginalSchema = t.Union([
-  TimetableLectureSchema,
-  t.Null(),
-  t.Object(
-    {
-      period: t.Optional(t.Number()),
-      subject: t.Optional(t.String()),
-      teacher: t.Optional(t.String()),
-    },
-    { additionalProperties: true },
-  ),
-]);
+export const TimetableOriginalSchema = t.Union(
+  [
+    TimetableLectureSchema,
+    t.Null(),
+    t.Object(
+      {
+        period: t.Optional(t.Number()),
+        subject: t.Optional(t.String()),
+        teacher: t.Optional(t.String()),
+      },
+      { additionalProperties: true },
+    ),
+  ],
+  {
+    description:
+      "The lesson Comcigan originally scheduled for this slot: an object `{period, subject, teacher}` when `replaced` is true, otherwise `null`. Always `null` for `source=neis`. When the lesson was cancelled (e.g. on exam days), `subject` is empty, `cancelled` is true and `original` names the dropped lesson.",
+    examples: [
+      null,
+      { period: 1, subject: "국사", teacher: "김기*" },
+    ],
+  },
+);
 
 export const TimetablePeriodSchema = t.Object({
   period: t.Number({ examples: [1] }),
@@ -202,13 +212,41 @@ export const TimetablePeriodSchema = t.Object({
     examples: [false],
   }),
   original: TimetableOriginalSchema,
+  cancelled: t.Boolean({
+    description:
+      "true when the lesson was cancelled: `replaced` is true and `subject` is empty (e.g. exam days). `original` holds the cancelled lesson.",
+    examples: [false],
+  }),
+  makeup: t.Boolean({
+    description:
+      "true for a make-up lesson: `subject` starts with `[보강]`. `subject` is left as is, prefix included.",
+    examples: [false],
+  }),
+});
+
+export const TimetableDaySchema = t.Object({
+  date: t.String({
+    pattern: "^\\d{8}$",
+    description: "Calendar date (YYYYMMDD) of this timetable day.",
+    examples: ["20261009"],
+  }),
+  closed: t.Boolean({
+    description:
+      "true when NEIS SchoolSchedule marks the day as a holiday (`공휴일`) or school closure (`휴업일`) for this grade. The timetable for that day may still repeat the holiday name in every period.",
+    examples: [true],
+  }),
+  events: t.Array(t.String(), {
+    description:
+      "SchoolSchedule `EVENT_NM`s for this day that apply to the requested grade, without `토요휴업일`. Empty when there are none.",
+    examples: [["한글날"]],
+  }),
 });
 
 export const TimetableResponseSchema = t.Object({
-  day_time: t.Array(t.String({ examples: ["09:00"] }), {
+  day_time: t.Array(t.String({ examples: ["1(08:10)"] }), {
     description:
-      "Period start times from Comcigan. Empty when only NEIS data is available (NEIS does not publish bell times).",
-    examples: [["09:00", "09:50", "10:00"]],
+      "Bell times from Comcigan, one string per period in the form `\"<period>(HH:MM)\"`, e.g. `\"1(08:10)\"`. Start times only, no end times. Always taken from Comcigan, so it is an empty array when Comcigan has none (`source=neis`, schools not on Comcigan, or Comcigan unreachable). NEIS does not publish bell times.",
+    examples: [["1(08:10)", "2(09:10)", "3(10:10)", "4(11:10)", "5(13:10)", "6(14:10)", "7(15:10)"]],
   }),
   timetable: t.Array(t.Array(TimetablePeriodSchema), {
     examples: [
@@ -220,6 +258,8 @@ export const TimetableResponseSchema = t.Object({
             teacher: "김교사",
             replaced: false,
             original: null,
+            cancelled: false,
+            makeup: false,
           },
           {
             period: 2,
@@ -227,6 +267,8 @@ export const TimetableResponseSchema = t.Object({
             teacher: "이교사",
             replaced: false,
             original: null,
+            cancelled: false,
+            makeup: false,
           },
           {
             period: 3,
@@ -238,6 +280,30 @@ export const TimetableResponseSchema = t.Object({
               subject: "영어",
               teacher: "박교사",
             },
+            cancelled: false,
+            makeup: false,
+          },
+          {
+            period: 4,
+            subject: "",
+            teacher: "",
+            replaced: true,
+            original: {
+              period: 4,
+              subject: "국사",
+              teacher: "김기*",
+            },
+            cancelled: true,
+            makeup: false,
+          },
+          {
+            period: 5,
+            subject: "[보강]음악 연주와 창작",
+            teacher: "",
+            replaced: false,
+            original: null,
+            cancelled: false,
+            makeup: true,
           },
         ],
       ],
@@ -248,4 +314,25 @@ export const TimetableResponseSchema = t.Object({
       "Comcigan last-updated stamp, or NEIS LOAD_DTM as YYYY-MM-DD. Empty if NEIS omitted it.",
     examples: ["2025-05-26"],
   }),
+  week_start: t.String({
+    pattern: "^\\d{8}$",
+    description:
+      "Monday of the week this response describes, as YYYYMMDD in KST. `week=0` is the current Mon–Sun week in Korea, `week=1` the one after. Keep it with a cached response: a cached `week=1` whose `week_start` is now the current Monday has become this week.",
+    examples: ["20261005"],
+  }),
+  days: t.Optional(
+    t.Array(TimetableDaySchema, {
+      description:
+        "Per-day status from NEIS SchoolSchedule, index-aligned with `timetable` (`days[i]` describes `timetable[i]`, starting at `week_start`). Only rows that apply to the requested grade count. A week with no schedule rows returns every day with `closed: false` and `events: []`. **Omitted** when the schedule lookup fails or is slow; the timetable is still returned.",
+      examples: [
+        [
+          { date: "20261005", closed: true, events: ["대체공휴일"] },
+          { date: "20261006", closed: false, events: [] },
+          { date: "20261007", closed: false, events: ["중간고사"] },
+          { date: "20261008", closed: false, events: ["중간고사"] },
+          { date: "20261009", closed: true, events: ["한글날"] },
+        ],
+      ],
+    }),
+  ),
 });

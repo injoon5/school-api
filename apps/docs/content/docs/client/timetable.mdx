@@ -51,6 +51,20 @@ const grade1Class3 = table.timetable[1][3].slice(1);
 
 HTTP `GET /timetable` already returns that weekday array as `timetable`.
 
+## KST week helpers
+
+`@timeforschool/client/timetable` also exports the date helpers `fetchNeisTimeTable` uses. All dates are `YYYYMMDD` in Asia/Seoul, whatever the host time zone.
+
+```ts
+import { addDaysYmd, kstYmd, weekYmdRange } from "@timeforschool/client/timetable";
+
+kstYmd(); // today in KST, e.g. "20261002"
+weekYmdRange(1); // { mondayYmd: "20261005", fromYmd: "20261005", toYmd: "20261011" }
+addDaysYmd("20261231", 1); // "20270101"
+```
+
+HTTP `GET /timetable` returns the same Monday as `week_start`.
+
 ## What NEIS does not publish
 
 Left blank on purpose when Comcigan has no data (same keys, empty values):

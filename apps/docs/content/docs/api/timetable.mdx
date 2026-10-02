@@ -22,7 +22,11 @@ _openapi:
           week, 1 = next week. Comcigan substitutions use `replaced` +
           `original`. `day_time` always comes from Comcigan and is blank when
           Comcigan has none. `teacher` also stays blank when Comcigan has no
-          data.
+          data. `week_start` is the KST Monday the response describes. Each
+          period carries `cancelled` and `makeup` flags. `days` (index-aligned
+          with `timetable`) marks holidays and lists the grade's NEIS calendar
+          events; it is fetched in parallel and omitted if the calendar lookup
+          fails.
         heading: weekly-class-timetable
 ---
 

@@ -5,6 +5,7 @@ import { fetchTimeTable } from "@timeforschool/client";
 import { Elysia, type Static, t } from "elysia";
 import { API_VERSION, APP_NAME, CORS_ORIGINS, NEIS_API_KEY } from "./config.js";
 import { ApiError, ErrorCode } from "./errors/api-error.js";
+import { CacheControl, errorCacheControl, httpCache } from "./http/cache.js";
 import {
   ApiErrorSchema,
   ClassNo,
@@ -27,10 +28,25 @@ import {
   createNeisClient,
   resolveSchool,
 } from "./services/school.js";
+import {
+  fetchWeekSchedule,
+  filterScheduleByGrade,
+  mapScheduleToDays,
+  weekStartYmd,
+  withDeadline,
+  withSlotFlags,
+} from "./services/timetable-extras.js";
 import { omitNullsFromRows } from "./utils/json.js";
 
 const REMOVE_PAREN_PATTERN = /\([^)]*\)/g;
 const BR_TAG_PATTERN = /\s*<br\s*\/?>/g;
+
+/**
+ * How long `/timetable` waits for the SchoolSchedule join once the timetable
+ * itself is ready. A slow schedule call drops `days` instead of slowing the
+ * response.
+ */
+const SCHEDULE_GRACE_MS = 1000;
 
 const ClassListSchema = t.Array(t.String({ examples: ["1", "2", "3"] }));
 
@@ -68,6 +84,10 @@ export const app = new Elysia({ name: "timeforschool-api" })
         },
       );
       set.status = apiError.status;
+      set.headers["cache-control"] = errorCacheControl(
+        apiError.status,
+        apiError.code,
+      );
       return apiError.toJSON();
     }
 
@@ -75,6 +95,10 @@ export const app = new Elysia({ name: "timeforschool-api" })
       error instanceof ApiError ? error : ApiError.fromUnknown(error);
 
     set.status = apiError.status;
+    set.headers["cache-control"] = errorCacheControl(
+      apiError.status,
+      apiError.code,
+    );
     return apiError.toJSON();
   })
   .get(
@@ -113,6 +137,7 @@ export const app = new Elysia({ name: "timeforschool-api" })
         description:
           "Returns all NEIS school records matching schoolname (required).",
       },
+      mapResponse: httpCache(CacheControl.directory),
       response: {
         200: "SchoolInfoList",
         400: "ApiError",
@@ -160,6 +185,7 @@ export const app = new Elysia({ name: "timeforschool-api" })
         description:
           "Returns sorted class names (반) for the given school and grade using NEIS classInfo.",
       },
+      mapResponse: httpCache(CacheControl.directory),
       response: {
         200: "ClassList",
         400: "ApiError",
@@ -178,6 +204,7 @@ export const app = new Elysia({ name: "timeforschool-api" })
       const classno = query.classno;
       const week = query.week ?? 0;
       const source = query.source ?? "auto";
+      const weekStart = weekStartYmd(week);
       const client = createNeisClient();
 
       let schoolName = schoolname;
@@ -189,6 +216,13 @@ export const app = new Elysia({ name: "timeforschool-api" })
         school = await resolveSchool({ schoolcode }, client);
         schoolName = school.SCHUL_NM;
       }
+
+      // Started before the timetable so the two upstream calls overlap.
+      const schedule = fetchWeekSchedule(
+        client,
+        school ?? { schoolname: schoolName },
+        weekStart,
+      );
 
       const timetable = await fetchTimeTable({
         schoolName,
@@ -210,10 +244,23 @@ export const app = new Elysia({ name: "timeforschool-api" })
         );
       }
 
+      const scheduleRows = await withDeadline(schedule, SCHEDULE_GRACE_MS);
+
       return {
         day_time: timetable.dayTime,
-        timetable: weekDays,
+        timetable: weekDays.map((day) => day.map(withSlotFlags)),
         update_date: timetable.updateDate,
+        week_start: weekStart,
+        ...(scheduleRows
+          ? {
+              days: mapScheduleToDays(
+                scheduleRows,
+                weekStart,
+                weekDays.length,
+                grade,
+              ),
+            }
+          : {}),
       } as Static<typeof TimetableResponseSchema>;
     },
     {
@@ -230,8 +277,9 @@ export const app = new Elysia({ name: "timeforschool-api" })
         tags: ["Timetable"],
         summary: "Weekly class timetable",
         description:
-          "Fetches the class schedule. Default `source=auto` calls Comcigan and NEIS in parallel and merges them per period: whichever side has a subject is used, the shorter name wins when both do, and missing weekdays/periods fill from the other source. Empty or cancelled Comcigan periods still fill from NEIS. NEIS Saturday is ignored (stale 토요휴업일). Pin `source=comcigan` or `source=neis` to hit a single upstream. Provide schoolname, or schoolcode alone. week: 0 = this week, 1 = next week. Comcigan substitutions use `replaced` + `original`. `day_time` always comes from Comcigan and is blank when Comcigan has none. `teacher` also stays blank when Comcigan has no data.",
+          "Fetches the class schedule. Default `source=auto` calls Comcigan and NEIS in parallel and merges them per period: whichever side has a subject is used, the shorter name wins when both do, and missing weekdays/periods fill from the other source. Empty or cancelled Comcigan periods still fill from NEIS. NEIS Saturday is ignored (stale 토요휴업일). Pin `source=comcigan` or `source=neis` to hit a single upstream. Provide schoolname, or schoolcode alone. week: 0 = this week, 1 = next week. Comcigan substitutions use `replaced` + `original`. `day_time` always comes from Comcigan and is blank when Comcigan has none. `teacher` also stays blank when Comcigan has no data. `week_start` is the KST Monday the response describes. Each period carries `cancelled` and `makeup` flags. `days` (index-aligned with `timetable`) marks holidays and lists the grade's NEIS calendar events; it is fetched in parallel and omitted if the calendar lookup fails.",
       },
+      mapResponse: httpCache(CacheControl.timetable),
       response: {
         200: "TimetableResponse",
         400: "ApiError",
@@ -286,6 +334,7 @@ export const app = new Elysia({ name: "timeforschool-api" })
         description:
           "Returns NEIS mealServiceDietInfo rows. Parentheses are stripped from dish names; HTML line breaks become newlines.",
       },
+      mapResponse: httpCache(CacheControl.calendar),
       response: {
         200: "MealList",
         400: "ApiError",
@@ -299,12 +348,16 @@ export const app = new Elysia({ name: "timeforschool-api" })
     async ({ query }) => {
       const client = createNeisClient();
       const school = await resolveSchool(query, client);
-      const rows = await client.schoolSchedule({
+      const allRows = await client.schoolSchedule({
         ATPT_OFCDC_SC_CODE: school.ATPT_OFCDC_SC_CODE,
         SD_SCHUL_CODE: school.SD_SCHUL_CODE,
         AA_FROM_YMD: query.startdate,
         AA_TO_YMD: query.enddate,
       });
+      const rows =
+        query.grade === undefined
+          ? allRows
+          : filterScheduleByGrade(allRows, query.grade);
 
       if (rows.length === 0) {
         throw ApiError.neisDataNotFound({
@@ -312,6 +365,7 @@ export const app = new Elysia({ name: "timeforschool-api" })
           startdate: query.startdate,
           enddate: query.enddate,
           schoolname: school.SCHUL_NM,
+          ...(query.grade === undefined ? {} : { grade: String(query.grade) }),
         });
       }
 
@@ -323,13 +377,24 @@ export const app = new Elysia({ name: "timeforschool-api" })
         t.Object({
           startdate: DateYmd,
           enddate: DateYmd,
+          grade: t.Optional(
+            t.Numeric({
+              minimum: 1,
+              maximum: 6,
+              description:
+                "Optional grade level (학년). When set, only rows whose matching `*_GRADE_EVENT_YN` is `Y` are returned.",
+              examples: [1],
+            }),
+          ),
         }),
       ]),
       detail: {
         tags: ["Schedule"],
         summary: "School calendar events",
-        description: "Returns NEIS SchoolSchedule rows between startdate and enddate (inclusive).",
+        description:
+          "Returns NEIS SchoolSchedule rows between startdate and enddate (inclusive), in their raw NEIS shape. Optional `grade` keeps only rows whose matching `*_GRADE_EVENT_YN` column (`ONE_GRADE_EVENT_YN` for grade 1 … `SIX_GRADE_EVENT_YN` for grade 6) is `Y`. An empty result, with or without `grade`, is `404 NEIS_DATA_NOT_FOUND`.",
       },
+      mapResponse: httpCache(CacheControl.calendar),
       response: {
         200: "ScheduleList",
         400: "ApiError",
