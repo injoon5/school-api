@@ -28,11 +28,24 @@ import {
   createNeisClient,
   resolveSchool,
 } from "./services/school.js";
-import { weekStartYmd, withSlotFlags } from "./services/timetable-extras.js";
+import {
+  fetchWeekSchedule,
+  mapScheduleToDays,
+  weekStartYmd,
+  withDeadline,
+  withSlotFlags,
+} from "./services/timetable-extras.js";
 import { omitNullsFromRows } from "./utils/json.js";
 
 const REMOVE_PAREN_PATTERN = /\([^)]*\)/g;
 const BR_TAG_PATTERN = /\s*<br\s*\/?>/g;
+
+/**
+ * How long `/timetable` waits for the SchoolSchedule join once the timetable
+ * itself is ready. A slow schedule call drops `days` instead of slowing the
+ * response.
+ */
+const SCHEDULE_GRACE_MS = 1000;
 
 const ClassListSchema = t.Array(t.String({ examples: ["1", "2", "3"] }));
 
@@ -203,6 +216,13 @@ export const app = new Elysia({ name: "timeforschool-api" })
         schoolName = school.SCHUL_NM;
       }
 
+      // Started before the timetable so the two upstream calls overlap.
+      const schedule = fetchWeekSchedule(
+        client,
+        school ?? { schoolname: schoolName },
+        weekStart,
+      );
+
       const timetable = await fetchTimeTable({
         schoolName,
         schoolCode: schoolcode ? Number(schoolcode) : undefined,
@@ -223,11 +243,23 @@ export const app = new Elysia({ name: "timeforschool-api" })
         );
       }
 
+      const scheduleRows = await withDeadline(schedule, SCHEDULE_GRACE_MS);
+
       return {
         day_time: timetable.dayTime,
         timetable: weekDays.map((day) => day.map(withSlotFlags)),
         update_date: timetable.updateDate,
         week_start: weekStart,
+        ...(scheduleRows
+          ? {
+              days: mapScheduleToDays(
+                scheduleRows,
+                weekStart,
+                weekDays.length,
+                grade,
+              ),
+            }
+          : {}),
       } as Static<typeof TimetableResponseSchema>;
     },
     {
@@ -244,7 +276,7 @@ export const app = new Elysia({ name: "timeforschool-api" })
         tags: ["Timetable"],
         summary: "Weekly class timetable",
         description:
-          "Fetches the class schedule. Default `source=auto` calls Comcigan and NEIS in parallel and merges them per period: whichever side has a subject is used, the shorter name wins when both do, and missing weekdays/periods fill from the other source. Empty or cancelled Comcigan periods still fill from NEIS. NEIS Saturday is ignored (stale 토요휴업일). Pin `source=comcigan` or `source=neis` to hit a single upstream. Provide schoolname, or schoolcode alone. week: 0 = this week, 1 = next week. Comcigan substitutions use `replaced` + `original`. `day_time` always comes from Comcigan and is blank when Comcigan has none. `teacher` also stays blank when Comcigan has no data.",
+          "Fetches the class schedule. Default `source=auto` calls Comcigan and NEIS in parallel and merges them per period: whichever side has a subject is used, the shorter name wins when both do, and missing weekdays/periods fill from the other source. Empty or cancelled Comcigan periods still fill from NEIS. NEIS Saturday is ignored (stale 토요휴업일). Pin `source=comcigan` or `source=neis` to hit a single upstream. Provide schoolname, or schoolcode alone. week: 0 = this week, 1 = next week. Comcigan substitutions use `replaced` + `original`. `day_time` always comes from Comcigan and is blank when Comcigan has none. `teacher` also stays blank when Comcigan has no data. `week_start` is the KST Monday the response describes. Each period carries `cancelled` and `makeup` flags. `days` (index-aligned with `timetable`) marks holidays and lists the grade's NEIS calendar events; it is fetched in parallel and omitted if the calendar lookup fails.",
       },
       mapResponse: httpCache(CacheControl.timetable),
       response: {

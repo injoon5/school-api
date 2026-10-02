@@ -214,6 +214,24 @@ export const TimetablePeriodSchema = t.Object({
   }),
 });
 
+export const TimetableDaySchema = t.Object({
+  date: t.String({
+    pattern: "^\\d{8}$",
+    description: "Calendar date (YYYYMMDD) of this timetable day.",
+    examples: ["20261009"],
+  }),
+  closed: t.Boolean({
+    description:
+      "true when NEIS SchoolSchedule marks the day as a holiday (`공휴일`) or school closure (`휴업일`) for this grade. The timetable for that day may still repeat the holiday name in every period.",
+    examples: [true],
+  }),
+  events: t.Array(t.String(), {
+    description:
+      "SchoolSchedule `EVENT_NM`s for this day that apply to the requested grade, without `토요휴업일`. Empty when there are none.",
+    examples: [["한글날"]],
+  }),
+});
+
 export const TimetableResponseSchema = t.Object({
   day_time: t.Array(t.String({ examples: ["09:00"] }), {
     description:
@@ -270,4 +288,19 @@ export const TimetableResponseSchema = t.Object({
       "Monday of the week this response describes, as YYYYMMDD in KST. `week=0` is the current Mon–Sun week in Korea, `week=1` the one after. Keep it with a cached response: a cached `week=1` whose `week_start` is now the current Monday has become this week.",
     examples: ["20261005"],
   }),
+  days: t.Optional(
+    t.Array(TimetableDaySchema, {
+      description:
+        "Per-day status from NEIS SchoolSchedule, index-aligned with `timetable` (`days[i]` describes `timetable[i]`, starting at `week_start`). Only rows that apply to the requested grade count. A week with no schedule rows returns every day with `closed: false` and `events: []`. **Omitted** when the schedule lookup fails or is slow; the timetable is still returned.",
+      examples: [
+        [
+          { date: "20261005", closed: true, events: ["대체공휴일"] },
+          { date: "20261006", closed: false, events: [] },
+          { date: "20261007", closed: false, events: ["중간고사"] },
+          { date: "20261008", closed: false, events: ["중간고사"] },
+          { date: "20261009", closed: true, events: ["한글날"] },
+        ],
+      ],
+    }),
+  ),
 });

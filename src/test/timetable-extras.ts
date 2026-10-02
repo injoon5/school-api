@@ -1,7 +1,21 @@
 /**
  * Unit tests for /timetable and /schedule extras (no network).
  */
-import { weekStartYmd, withSlotFlags } from "../services/timetable-extras.js";
+import {
+  NeisDataNotFoundError,
+  type NeisClient,
+  type SchoolInfoRow,
+  type SchoolScheduleRow,
+} from "@timeforschool/client";
+import {
+  appliesToGrade,
+  fetchWeekSchedule,
+  filterScheduleByGrade,
+  mapScheduleToDays,
+  weekStartYmd,
+  withDeadline,
+  withSlotFlags,
+} from "../services/timetable-extras.js";
 import { assert } from "./helpers.js";
 
 function eq<T>(actual: T, expected: T, message: string): void {
@@ -107,6 +121,179 @@ function testSlotFlags(): void {
   eq(midMakeup.makeup, false, "[보강] only counts as a prefix");
 }
 
-testWeekStart();
-testSlotFlags();
-console.log("✓ timetable extras: week_start, slot flags");
+function scheduleRow(
+  date: string,
+  name: string,
+  kind: string,
+  grades: string = "YYY***",
+): SchoolScheduleRow {
+  const [one, two, three, four, five, six] = grades.split("");
+  return {
+    ATPT_OFCDC_SC_CODE: "B10",
+    ATPT_OFCDC_SC_NM: "서울특별시교육청",
+    SD_SCHUL_CODE: "7010208",
+    SCHUL_NM: "양정고등학교",
+    AY: "2026",
+    DGHT_CRSE_SC_NM: "주간",
+    SCHUL_CRSE_SC_NM: "고등학교",
+    SBTR_DD_SC_NM: kind,
+    AA_YMD: date,
+    EVENT_NM: name,
+    EVENT_CNTNT: "",
+    ONE_GRADE_EVENT_YN: one,
+    TW_GRADE_EVENT_YN: two,
+    THREE_GRADE_EVENT_YN: three,
+    FR_GRADE_EVENT_YN: four,
+    FIV_GRADE_EVENT_YN: five,
+    SIX_GRADE_EVENT_YN: six,
+    LOAD_DTM: "20261002000000",
+  } as SchoolScheduleRow;
+}
+
+// NEIS SchoolSchedule for 양정고 2026-10-05..10, as fetched on 2026-10-02.
+const OCTOBER_WEEK = [
+  scheduleRow("20261005", "대체공휴일", "공휴일"),
+  scheduleRow("20261007", "중간고사", "해당없음"),
+  scheduleRow("20261008", "중간고사", "해당없음"),
+  scheduleRow("20261009", "한글날", "공휴일"),
+  scheduleRow("20261010", "토요휴업일", "휴업일"),
+];
+
+function testGradeFilter(): void {
+  const third = scheduleRow("20261006", "3학년 모의고사", "해당없음", "NNY***");
+  eq(appliesToGrade(third, 3), true, "Y applies");
+  eq(appliesToGrade(third, 1), false, "N does not apply");
+  eq(appliesToGrade(third, 4), false, "* does not apply");
+  eq(appliesToGrade(third, 7), false, "out-of-range grade never applies");
+  eq(
+    filterScheduleByGrade([...OCTOBER_WEEK, third], 1).map((row) => row.EVENT_NM),
+    ["대체공휴일", "중간고사", "중간고사", "한글날", "토요휴업일"],
+    "grade 1 keeps school-wide rows, drops grade-3 rows, keeps raw rows",
+  );
+  eq(filterScheduleByGrade(OCTOBER_WEEK, 4), [], "grade 4 at a high school matches nothing");
+}
+
+function testScheduleDays(): void {
+  eq(
+    mapScheduleToDays(OCTOBER_WEEK, "20261005", 5, 1),
+    [
+      { date: "20261005", closed: true, events: ["대체공휴일"] },
+      { date: "20261006", closed: false, events: [] },
+      { date: "20261007", closed: false, events: ["중간고사"] },
+      { date: "20261008", closed: false, events: ["중간고사"] },
+      { date: "20261009", closed: true, events: ["한글날"] },
+    ],
+    "October week: Monday and Friday closed, exam days open",
+  );
+
+  eq(
+    mapScheduleToDays(OCTOBER_WEEK, "20261005", 6, 1)[5],
+    { date: "20261010", closed: false, events: [] },
+    "토요휴업일 is dropped",
+  );
+
+  eq(
+    mapScheduleToDays(OCTOBER_WEEK, "20261005", 5, 4).map((day) => day.closed),
+    [false, false, false, false, false],
+    "rows for other grades do not close the day",
+  );
+
+  eq(
+    mapScheduleToDays(
+      [
+        scheduleRow("20261229", "방학식", "해당없음"),
+        scheduleRow("20261229", "방학식", "해당없음"),
+        scheduleRow("20261231", "겨울방학", "휴업일"),
+        scheduleRow("20270101", "신정", "공휴일"),
+      ],
+      "20261228",
+      5,
+      2,
+    ),
+    [
+      { date: "20261228", closed: false, events: [] },
+      { date: "20261229", closed: false, events: ["방학식"] },
+      { date: "20261230", closed: false, events: [] },
+      { date: "20261231", closed: true, events: ["겨울방학"] },
+      { date: "20270101", closed: true, events: ["신정"] },
+    ],
+    "year boundary, 휴업일 closes, duplicate names collapse",
+  );
+
+  eq(mapScheduleToDays([], "20261005", 5, 1).length, 5, "empty rows still give one entry per day");
+  eq(mapScheduleToDays(OCTOBER_WEEK, "20261005", 0, 1), [], "no timetable days, no entries");
+}
+
+async function testFetchWeekSchedule(): Promise<void> {
+  const school = { ATPT_OFCDC_SC_CODE: "B10", SD_SCHUL_CODE: "7010208" } as SchoolInfoRow;
+  const requests: unknown[] = [];
+  const client = (behaviour: () => Promise<SchoolScheduleRow[]>) =>
+    ({
+      schoolSchedule: (params: unknown) => {
+        requests.push(params);
+        return behaviour();
+      },
+    }) as unknown as NeisClient;
+
+  const rows = await fetchWeekSchedule(
+    client(async () => OCTOBER_WEEK),
+    school,
+    "20261005",
+  );
+  eq(rows?.length, 5, "rows pass through");
+  eq(
+    requests[0],
+    {
+      ATPT_OFCDC_SC_CODE: "B10",
+      SD_SCHUL_CODE: "7010208",
+      AA_FROM_YMD: "20261005",
+      AA_TO_YMD: "20261010",
+    },
+    "requests Monday to Saturday",
+  );
+
+  const empty = await fetchWeekSchedule(
+    client(async () => {
+      throw new NeisDataNotFoundError("INFO-200", "해당하는 데이터가 없습니다.");
+    }),
+    school,
+    "20261005",
+  );
+  eq(empty, [], "an empty range is [] (days with no events)");
+
+  const originalWarn = console.warn;
+  console.warn = () => {};
+  try {
+    const failed = await fetchWeekSchedule(
+      client(async () => {
+        throw new Error("ECONNRESET");
+      }),
+      school,
+      "20261005",
+    );
+    eq(failed, undefined, "an outage is undefined (days omitted), never a throw");
+  } finally {
+    console.warn = originalWarn;
+  }
+}
+
+async function testDeadline(): Promise<void> {
+  eq(await withDeadline(Promise.resolve(1), 50), 1, "fast promise wins");
+  const slow = new Promise<number>((resolve) => setTimeout(() => resolve(2), 200));
+  eq(await withDeadline(slow, 10), undefined, "slow promise is cut off");
+}
+
+async function run(): Promise<void> {
+  testWeekStart();
+  testSlotFlags();
+  testGradeFilter();
+  testScheduleDays();
+  await testFetchWeekSchedule();
+  await testDeadline();
+  console.log("✓ timetable extras: week_start, slot flags, grade filter, days");
+}
+
+run().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});
