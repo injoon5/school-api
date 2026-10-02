@@ -28,7 +28,7 @@ import {
   createNeisClient,
   resolveSchool,
 } from "./services/school.js";
-import { weekStartYmd } from "./services/timetable-extras.js";
+import { weekStartYmd, withSlotFlags } from "./services/timetable-extras.js";
 import { omitNullsFromRows } from "./utils/json.js";
 
 const REMOVE_PAREN_PATTERN = /\([^)]*\)/g;
@@ -225,7 +225,7 @@ export const app = new Elysia({ name: "timeforschool-api" })
 
       return {
         day_time: timetable.dayTime,
-        timetable: weekDays,
+        timetable: weekDays.map((day) => day.map(withSlotFlags)),
         update_date: timetable.updateDate,
         week_start: weekStart,
       } as Static<typeof TimetableResponseSchema>;

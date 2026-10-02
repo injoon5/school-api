@@ -1,7 +1,7 @@
 /**
  * Unit tests for /timetable and /schedule extras (no network).
  */
-import { weekStartYmd } from "../services/timetable-extras.js";
+import { weekStartYmd, withSlotFlags } from "../services/timetable-extras.js";
 import { assert } from "./helpers.js";
 
 function eq<T>(actual: T, expected: T, message: string): void {
@@ -42,5 +42,71 @@ function testWeekStart(): void {
   eq(weekStartYmd(1, sundayBeforeNewYear), "20261228", "Sunday before New Year, week=1");
 }
 
+function testSlotFlags(): void {
+  const cancelled = withSlotFlags({
+    period: 1,
+    subject: "",
+    teacher: "",
+    replaced: true,
+    original: { period: 1, subject: "국사", teacher: "김기*" },
+  });
+  eq(cancelled, {
+    period: 1,
+    subject: "",
+    teacher: "",
+    replaced: true,
+    original: { period: 1, subject: "국사", teacher: "김기*" },
+    cancelled: true,
+    makeup: false,
+  }, "exam-day slot is cancelled, other fields and key order untouched");
+
+  const makeup = withSlotFlags({
+    period: 6,
+    subject: "[보강]음악 연주와 창작",
+    teacher: "",
+    replaced: false,
+    original: null,
+  });
+  eq(makeup.subject, "[보강]음악 연주와 창작", "makeup subject unchanged");
+  eq([makeup.cancelled, makeup.makeup], [false, true], "[보강] is a makeup");
+
+  const substituted = withSlotFlags({
+    period: 5,
+    subject: "음악",
+    teacher: "최현*",
+    replaced: true,
+    original: { period: 5, subject: "음악", teacher: "이용*" },
+  });
+  eq([substituted.cancelled, substituted.makeup], [false, false], "substitution with a subject is not cancelled");
+
+  const exam = withSlotFlags({
+    period: 4,
+    subject: "중간고사공통국어2",
+    teacher: "",
+    replaced: false,
+    original: null,
+  });
+  eq([exam.cancelled, exam.makeup], [false, false], "exam period is neither");
+
+  const empty = withSlotFlags({
+    period: 8,
+    subject: "",
+    teacher: "",
+    replaced: false,
+    original: null,
+  });
+  eq(empty.cancelled, false, "empty but not replaced is not cancelled");
+
+  const midMakeup = withSlotFlags({
+    period: 2,
+    subject: "음악[보강]",
+    teacher: "",
+    replaced: false,
+    original: null,
+  });
+  eq(midMakeup.makeup, false, "[보강] only counts as a prefix");
+}
+
 testWeekStart();
-console.log("✓ timetable extras: week_start");
+testSlotFlags();
+console.log("✓ timetable extras: week_start, slot flags");

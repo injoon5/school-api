@@ -202,6 +202,16 @@ export const TimetablePeriodSchema = t.Object({
     examples: [false],
   }),
   original: TimetableOriginalSchema,
+  cancelled: t.Boolean({
+    description:
+      "true when the lesson was cancelled: `replaced` is true and `subject` is empty (e.g. exam days). `original` holds the cancelled lesson.",
+    examples: [false],
+  }),
+  makeup: t.Boolean({
+    description:
+      "true for a make-up lesson: `subject` starts with `[보강]`. `subject` is left as is, prefix included.",
+    examples: [false],
+  }),
 });
 
 export const TimetableResponseSchema = t.Object({
@@ -220,6 +230,8 @@ export const TimetableResponseSchema = t.Object({
             teacher: "김교사",
             replaced: false,
             original: null,
+            cancelled: false,
+            makeup: false,
           },
           {
             period: 2,
@@ -227,6 +239,8 @@ export const TimetableResponseSchema = t.Object({
             teacher: "이교사",
             replaced: false,
             original: null,
+            cancelled: false,
+            makeup: false,
           },
           {
             period: 3,
@@ -238,6 +252,8 @@ export const TimetableResponseSchema = t.Object({
               subject: "영어",
               teacher: "박교사",
             },
+            cancelled: false,
+            makeup: false,
           },
         ],
       ],
