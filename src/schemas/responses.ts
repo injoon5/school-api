@@ -176,18 +176,28 @@ export const TimetableLectureSchema = t.Object({
 });
 
 /** Pre-substitution class; null when unchanged, object when replaced (may be partial). */
-export const TimetableOriginalSchema = t.Union([
-  TimetableLectureSchema,
-  t.Null(),
-  t.Object(
-    {
-      period: t.Optional(t.Number()),
-      subject: t.Optional(t.String()),
-      teacher: t.Optional(t.String()),
-    },
-    { additionalProperties: true },
-  ),
-]);
+export const TimetableOriginalSchema = t.Union(
+  [
+    TimetableLectureSchema,
+    t.Null(),
+    t.Object(
+      {
+        period: t.Optional(t.Number()),
+        subject: t.Optional(t.String()),
+        teacher: t.Optional(t.String()),
+      },
+      { additionalProperties: true },
+    ),
+  ],
+  {
+    description:
+      "The lesson Comcigan originally scheduled for this slot: an object `{period, subject, teacher}` when `replaced` is true, otherwise `null`. Always `null` for `source=neis`. When the lesson was cancelled (e.g. on exam days), `subject` is empty, `cancelled` is true and `original` names the dropped lesson.",
+    examples: [
+      null,
+      { period: 1, subject: "국사", teacher: "김기*" },
+    ],
+  },
+);
 
 export const TimetablePeriodSchema = t.Object({
   period: t.Number({ examples: [1] }),
@@ -233,10 +243,10 @@ export const TimetableDaySchema = t.Object({
 });
 
 export const TimetableResponseSchema = t.Object({
-  day_time: t.Array(t.String({ examples: ["09:00"] }), {
+  day_time: t.Array(t.String({ examples: ["1(08:10)"] }), {
     description:
-      "Period start times from Comcigan. Empty when only NEIS data is available (NEIS does not publish bell times).",
-    examples: [["09:00", "09:50", "10:00"]],
+      "Bell times from Comcigan, one string per period in the form `\"<period>(HH:MM)\"`, e.g. `\"1(08:10)\"`. Start times only, no end times. Always taken from Comcigan, so it is an empty array when Comcigan has none (`source=neis`, schools not on Comcigan, or Comcigan unreachable). NEIS does not publish bell times.",
+    examples: [["1(08:10)", "2(09:10)", "3(10:10)", "4(11:10)", "5(13:10)", "6(14:10)", "7(15:10)"]],
   }),
   timetable: t.Array(t.Array(TimetablePeriodSchema), {
     examples: [
@@ -272,6 +282,28 @@ export const TimetableResponseSchema = t.Object({
             },
             cancelled: false,
             makeup: false,
+          },
+          {
+            period: 4,
+            subject: "",
+            teacher: "",
+            replaced: true,
+            original: {
+              period: 4,
+              subject: "국사",
+              teacher: "김기*",
+            },
+            cancelled: true,
+            makeup: false,
+          },
+          {
+            period: 5,
+            subject: "[보강]음악 연주와 창작",
+            teacher: "",
+            replaced: false,
+            original: null,
+            cancelled: false,
+            makeup: true,
           },
         ],
       ],
