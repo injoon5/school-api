@@ -13,7 +13,10 @@ _openapi:
     contents:
       - content: >-
           Returns NEIS SchoolSchedule rows between startdate and enddate
-          (inclusive).
+          (inclusive), in their raw NEIS shape. Optional `grade` keeps only rows
+          whose matching `*_GRADE_EVENT_YN` column (`ONE_GRADE_EVENT_YN` for
+          grade 1 … `SIX_GRADE_EVENT_YN` for grade 6) is `Y`. An empty result,
+          with or without `grade`, is `404 NEIS_DATA_NOT_FOUND`.
         heading: school-calendar-events
 ---
 

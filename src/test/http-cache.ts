@@ -84,6 +84,14 @@ async function run(): Promise<void> {
   assert(invalid.headers.get("cache-control") === "no-store", "400 is no-store");
   assert(!invalid.headers.has("etag"), "400 has no ETag");
 
+  const invalidGrade = await app.handle(
+    new Request(
+      "http://127.0.0.1/schedule?schoolcode=7010208&startdate=20261005&enddate=20261010&grade=7",
+    ),
+  );
+  assert(invalidGrade.status === 400, "/schedule grade outside 1–6 is 400");
+  assert(invalidGrade.headers.get("cache-control") === "no-store", "/schedule 400 is no-store");
+
   console.log("✓ http cache: ETag, If-None-Match, Cache-Control");
 }
 

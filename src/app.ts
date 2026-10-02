@@ -30,6 +30,7 @@ import {
 } from "./services/school.js";
 import {
   fetchWeekSchedule,
+  filterScheduleByGrade,
   mapScheduleToDays,
   weekStartYmd,
   withDeadline,
@@ -347,12 +348,16 @@ export const app = new Elysia({ name: "timeforschool-api" })
     async ({ query }) => {
       const client = createNeisClient();
       const school = await resolveSchool(query, client);
-      const rows = await client.schoolSchedule({
+      const allRows = await client.schoolSchedule({
         ATPT_OFCDC_SC_CODE: school.ATPT_OFCDC_SC_CODE,
         SD_SCHUL_CODE: school.SD_SCHUL_CODE,
         AA_FROM_YMD: query.startdate,
         AA_TO_YMD: query.enddate,
       });
+      const rows =
+        query.grade === undefined
+          ? allRows
+          : filterScheduleByGrade(allRows, query.grade);
 
       if (rows.length === 0) {
         throw ApiError.neisDataNotFound({
@@ -360,6 +365,7 @@ export const app = new Elysia({ name: "timeforschool-api" })
           startdate: query.startdate,
           enddate: query.enddate,
           schoolname: school.SCHUL_NM,
+          ...(query.grade === undefined ? {} : { grade: String(query.grade) }),
         });
       }
 
@@ -371,12 +377,22 @@ export const app = new Elysia({ name: "timeforschool-api" })
         t.Object({
           startdate: DateYmd,
           enddate: DateYmd,
+          grade: t.Optional(
+            t.Numeric({
+              minimum: 1,
+              maximum: 6,
+              description:
+                "Optional grade level (학년). When set, only rows whose matching `*_GRADE_EVENT_YN` is `Y` are returned.",
+              examples: [1],
+            }),
+          ),
         }),
       ]),
       detail: {
         tags: ["Schedule"],
         summary: "School calendar events",
-        description: "Returns NEIS SchoolSchedule rows between startdate and enddate (inclusive).",
+        description:
+          "Returns NEIS SchoolSchedule rows between startdate and enddate (inclusive), in their raw NEIS shape. Optional `grade` keeps only rows whose matching `*_GRADE_EVENT_YN` column (`ONE_GRADE_EVENT_YN` for grade 1 … `SIX_GRADE_EVENT_YN` for grade 6) is `Y`. An empty result, with or without `grade`, is `404 NEIS_DATA_NOT_FOUND`.",
       },
       mapResponse: httpCache(CacheControl.calendar),
       response: {

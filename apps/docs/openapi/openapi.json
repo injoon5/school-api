@@ -538,7 +538,7 @@
           "Schedule"
         ],
         "summary": "School calendar events",
-        "description": "Returns NEIS SchoolSchedule rows between startdate and enddate (inclusive).",
+        "description": "Returns NEIS SchoolSchedule rows between startdate and enddate (inclusive), in their raw NEIS shape. Optional `grade` keeps only rows whose matching `*_GRADE_EVENT_YN` column (`ONE_GRADE_EVENT_YN` for grade 1 … `SIX_GRADE_EVENT_YN` for grade 6) is `Y`. An empty result, with or without `grade`, is `404 NEIS_DATA_NOT_FOUND`.",
         "parameters": [
           {
             "name": "schoolname",
@@ -590,6 +590,35 @@
                 "20250526"
               ],
               "type": "string"
+            }
+          },
+          {
+            "name": "grade",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "minimum": 1,
+              "maximum": 6,
+              "description": "Optional grade level (학년). When set, only rows whose matching `*_GRADE_EVENT_YN` is `Y` are returned.",
+              "examples": [
+                1
+              ],
+              "anyOf": [
+                {
+                  "format": "numeric",
+                  "default": 0,
+                  "type": "string"
+                },
+                {
+                  "minimum": 1,
+                  "maximum": 6,
+                  "description": "Optional grade level (학년). When set, only rows whose matching `*_GRADE_EVENT_YN` is `Y` are returned.",
+                  "examples": [
+                    1
+                  ],
+                  "type": "number"
+                }
+              ]
             }
           }
         ],
