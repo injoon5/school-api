@@ -248,4 +248,10 @@ export const TimetableResponseSchema = t.Object({
       "Comcigan last-updated stamp, or NEIS LOAD_DTM as YYYY-MM-DD. Empty if NEIS omitted it.",
     examples: ["2025-05-26"],
   }),
+  week_start: t.String({
+    pattern: "^\\d{8}$",
+    description:
+      "Monday of the week this response describes, as YYYYMMDD in KST. `week=0` is the current Mon–Sun week in Korea, `week=1` the one after. Keep it with a cached response: a cached `week=1` whose `week_start` is now the current Monday has become this week.",
+    examples: ["20261005"],
+  }),
 });

@@ -16,7 +16,13 @@ export type {
   TimeTableResult,
   TimetableSource,
 } from "./types.js";
-export { fetchNeisTimeTable, mapNeisTimetableRows } from "./neis.js";
+export {
+  addDaysYmd,
+  fetchNeisTimeTable,
+  kstYmd,
+  mapNeisTimetableRows,
+  weekYmdRange,
+} from "./neis.js";
 export { mergeTimeTableResults, mergePeriod } from "./merge.js";
 export type { FetchNeisTimeTableOptions } from "./neis.js";
 export {

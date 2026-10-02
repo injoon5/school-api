@@ -28,6 +28,7 @@ import {
   createNeisClient,
   resolveSchool,
 } from "./services/school.js";
+import { weekStartYmd } from "./services/timetable-extras.js";
 import { omitNullsFromRows } from "./utils/json.js";
 
 const REMOVE_PAREN_PATTERN = /\([^)]*\)/g;
@@ -189,6 +190,7 @@ export const app = new Elysia({ name: "timeforschool-api" })
       const classno = query.classno;
       const week = query.week ?? 0;
       const source = query.source ?? "auto";
+      const weekStart = weekStartYmd(week);
       const client = createNeisClient();
 
       let schoolName = schoolname;
@@ -225,6 +227,7 @@ export const app = new Elysia({ name: "timeforschool-api" })
         day_time: timetable.dayTime,
         timetable: weekDays,
         update_date: timetable.updateDate,
+        week_start: weekStart,
       } as Static<typeof TimetableResponseSchema>;
     },
     {
